@@ -1,0 +1,79 @@
+import { BaseClientSideWebPart } from '@microsoft/sp-webpart-base';
+import { SPHttpClient, SPHttpClientResponse } from '@microsoft/sp-http';
+import { IPropertyPaneConfiguration, PropertyPaneTextField, PropertyPaneCheckbox } from '@microsoft/sp-property-pane';
+import styles from './LoadSharePointDataWebPart.module.scss';
+
+export interface ILoadSharePointDataWebPartProps {
+  listname: string;
+  checkbox1: boolean;
+}
+
+export default class LoadSharePointDataWebPart extends BaseClientSideWebPart<ILoadSharePointDataWebPartProps> {
+  private listName: string = "";
+  private checkbox1Property: string = "Created";
+
+  public render(): void {
+    this.listName = this.properties.listname;
+    this.loadData();
+  }
+
+  private loadData(): void {
+    let url: string = `${this.context.pageContext.web.absoluteUrl}/_api/web/lists/getbytitle('${this.listName}')/items?select=Title`;
+    if (this.properties.checkbox1) {
+      url += ",Created";
+    }
+
+    this.GetListData(url).then((response) => {
+      this.RenderListData(response.value);
+    });
+  }
+
+  private GetListData(url: string): Promise<any> {
+    return this.context.spHttpClient.get(url, SPHttpClient.configurations.v1)
+      .then((response: SPHttpClientResponse) => {
+        return response.json();
+      });
+  }
+
+  private RenderListData(listItems: any[]): void {
+    let strHtml: string = "";
+    if (listItems) {
+      listItems.forEach((listItem: any) => {
+        let itemcreatedstr: string = listItem.Created;
+
+        strHtml += `<div class="${styles.row}">`;
+        strHtml += `<div class="${styles.cell}"><p>${listItem.Title}</p></div>`;
+        if (this.properties.checkbox1) {
+          strHtml += `<div class="${styles.cell}"><p>${itemcreatedstr}</p></div>`;
+        }
+        strHtml += `</div>`;
+      });
+    }
+    this.domElement.innerHTML = `<div class="${styles.Table}">${strHtml}</div>`;
+  }
+
+  protected getPropertyPaneConfiguration(): IPropertyPaneConfiguration {
+    return {
+      pages: [
+        {
+          header: {
+            description: 'Web Part Settings'
+          },
+          groups: [
+            {
+              groupName: 'Display Settings',
+              groupFields: [
+                PropertyPaneTextField('listname', {
+                  label: "List Name"
+                }),
+                PropertyPaneCheckbox('checkbox1', {
+                  text: this.checkbox1Property
+                })
+              ]
+            }
+          ]
+        }
+      ]
+    };
+  }
+}
