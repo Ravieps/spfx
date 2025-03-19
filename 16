@@ -1,0 +1,201 @@
+<!-- Load jQuery -->
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+
+<script>
+$(document).ready(function () {
+    // Add button to page
+    $("body").append('<button id="terminateWorkflowsBtn" style="position:fixed;bottom:20px;right:20px;padding:10px 15px;background:#d9534f;color:white;border:none;border-radius:5px;cursor:pointer;z-index:1000;">Terminate Suspended Workflows</button>');
+
+    var siteUrl = _spPageContextInfo.webAbsoluteUrl;
+    var listName = "Your List Name";  // Change this
+
+    $("#terminateWorkflowsBtn").click(function () {
+        $("#terminateWorkflowsBtn").prop("disabled", true).text("Processing...");
+        
+        // Get request digest
+        $.ajax({
+            url: siteUrl + "/_api/contextinfo",
+            method: "POST",
+            headers: { "Accept": "application/json;odata=verbose" },
+            success: function (response) {
+                var requestDigest = response.d.GetContextWebInformation.FormDigestValue;
+                getListGUID(requestDigest);
+            },
+            error: function () {
+                alert("Error fetching request digest.");
+                $("#terminateWorkflowsBtn").prop("disabled", false).text("Terminate Suspended Workflows");
+            }
+        });
+    });
+
+    function getListGUID(requestDigest) {
+        $.ajax({
+            url: siteUrl + "/_api/web/lists/getbytitle('" + listName + "')?$select=Id",
+            method: "GET",
+            headers: { "Accept": "application/json;odata=verbose" },
+            success: function (response) {
+                var listGUID = response.d.Id;
+                getSuspendedWorkflowCount(requestDigest, listGUID);
+            },
+            error: function () {
+                alert("Error fetching list GUID.");
+                $("#terminateWorkflowsBtn").prop("disabled", false).text("Terminate Suspended Workflows");
+            }
+        });
+    }
+
+    function getSuspendedWorkflowCount(requestDigest, listGUID) {
+        $.ajax({
+            url: siteUrl + "/_api/web/lists(guid" + listGUID + ")/items?$select=Id",
+            method: "GET",
+            headers: { "Accept": "application/json;odata=verbose" },
+            success: function (data) {
+                var items = data.d.results;
+                if (items.length === 0) {
+                    alert("No items found in the list.");
+                    $("#terminateWorkflowsBtn").prop("disabled", false).text("Terminate Suspended Workflows");
+                    return;
+                }
+
+                var suspendedCount = 0;
+                var processedItems = 0;
+                var totalItems = items.length;
+
+                items.forEach(function (item) {
+                    var itemId = item.Id;
+
+                    // FIX: Corrected API Call for EnumerateInstancesForListItem
+                    $.ajax({
+                        url: siteUrl + "/_api/SP.WorkflowServices.WorkflowInstanceService.EnumerateInstancesForListItem",
+                        method: "POST",
+                        headers: {
+                            "Accept": "application/json;odata=verbose",
+                            "X-RequestDigest": requestDigest,
+                            "Content-Type": "application/json"
+                        },
+                        data: JSON.stringify({
+                            listId: listGUID, // FIX: Proper JSON format
+                            itemId: itemId
+                        }),
+                        success: function (workflowData) {
+                            var workflows = workflowData.d.results;
+                            workflows.forEach(function (workflow) {
+                                if (workflow.Status === "Suspended") {
+                                    suspendedCount++;
+                                }
+                            });
+
+                            processedItems++;
+                            checkIfAllProcessed();
+                        },
+                        error: function () {
+                            processedItems++;
+                            checkIfAllProcessed();
+                        }
+                    });
+                });
+
+                function checkIfAllProcessed() {
+                    if (processedItems === totalItems) {
+                        if (suspendedCount > 0) {
+                            var confirmTermination = confirm("Found " + suspendedCount + " suspended workflows. Do you want to proceed with termination?");
+                            if (confirmTermination) {
+                                terminateSuspendedWorkflows(requestDigest, listGUID);
+                            } else {
+                                alert("Termination canceled.");
+                                $("#terminateWorkflowsBtn").prop("disabled", false).text("Terminate Suspended Workflows");
+                            }
+                        } else {
+                            alert("No suspended workflows found.");
+                            $("#terminateWorkflowsBtn").prop("disabled", false).text("Terminate Suspended Workflows");
+                        }
+                    }
+                }
+            },
+            error: function () {
+                alert("Error fetching list items.");
+                $("#terminateWorkflowsBtn").prop("disabled", false).text("Terminate Suspended Workflows");
+            }
+        });
+    }
+
+    function terminateSuspendedWorkflows(requestDigest, listGUID) {
+        $.ajax({
+            url: siteUrl + "/_api/web/lists(guid" + listGUID + ")/items?$select=Id",
+            method: "GET",
+            headers: { "Accept": "application/json;odata=verbose" },
+            success: function (data) {
+                var items = data.d.results;
+                if (items.length === 0) {
+                    alert("No items found in the list.");
+                    $("#terminateWorkflowsBtn").prop("disabled", false).text("Terminate Suspended Workflows");
+                    return;
+                }
+
+                var terminatedCount = 0;
+                var processedItems = 0;
+                var totalItems = items.length;
+
+                items.forEach(function (item) {
+                    var itemId = item.Id;
+
+                    $.ajax({
+                        url: siteUrl + "/_api/SP.WorkflowServices.WorkflowInstanceService.EnumerateInstancesForListItem",
+                        method: "POST",
+                        headers: {
+                            "Accept": "application/json;odata=verbose",
+                            "X-RequestDigest": requestDigest,
+                            "Content-Type": "application/json"
+                        },
+                        data: JSON.stringify({
+                            listId: listGUID,
+                            itemId: itemId
+                        }),
+                        success: function (workflowData) {
+                            var workflows = workflowData.d.results;
+
+                            workflows.forEach(function (workflow) {
+                                if (workflow.Status === "Suspended") {
+                                    $.ajax({
+                                        url: siteUrl + "/_api/SP.WorkflowServices.WorkflowInstanceService.CancelWorkflow",
+                                        method: "POST",
+                                        headers: {
+                                            "Accept": "application/json;odata=verbose",
+                                            "X-RequestDigest": requestDigest,
+                                            "Content-Type": "application/json"
+                                        },
+                                        data: JSON.stringify({ instanceId: workflow.Id }),
+                                        success: function () {
+                                            terminatedCount++;
+                                        },
+                                        error: function () {
+                                            alert("Error terminating workflow for Item ID " + itemId);
+                                        }
+                                    });
+                                }
+                            });
+
+                            processedItems++;
+                            if (processedItems === totalItems) {
+                                alert("Terminated " + terminatedCount + " suspended workflows.");
+                                $("#terminateWorkflowsBtn").prop("disabled", false).text("Terminate Suspended Workflows");
+                            }
+                        },
+                        error: function () {
+                            processedItems++;
+                            if (processedItems === totalItems) {
+                                alert("Terminated " + terminatedCount + " suspended workflows.");
+                                $("#terminateWorkflowsBtn").prop("disabled", false).text("Terminate Suspended Workflows");
+                            }
+                        }
+                    });
+                });
+            },
+            error: function () {
+                alert("Error fetching list items.");
+                $("#terminateWorkflowsBtn").prop("disabled", false).text("Terminate Suspended Workflows");
+            }
+        });
+    }
+});
+</script>
