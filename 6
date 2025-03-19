@@ -1,0 +1,78 @@
+<script type="text/javascript">
+SP.SOD.executeFunc('sp.js', 'SP.ClientContext', function () {
+    console.log("✅ SP.js loaded successfully.");
+    
+    SP.SOD.executeFunc('sp.workflowservices.js', 'SP.WorkflowServices.WorkflowServicesManager', function () {
+        console.log("✅ SP.WorkflowServices.js loaded successfully.");
+        getSuspendedWorkflows();
+    });
+
+    SP.SOD.loadMultiple(['sp.workflowservices.js'], function() {
+        console.log("✅ SP.WorkflowServices.js manually loaded.");
+    });
+});
+
+// Global error handler
+window.onerror = function(message, source, lineno, colno, error) {
+    console.error(`❌ Global Error: ${message} at ${source}:${lineno}:${colno}`);
+};
+
+function getSuspendedWorkflows() {
+    console.log("🚀 Fetching Suspended Workflows...");
+
+    var siteUrl = _spPageContextInfo.siteAbsoluteUrl; // Get the current site URL
+    var clientContext = new SP.ClientContext(siteUrl);
+    var workflowServicesManager = new SP.WorkflowServices.WorkflowServicesManager(clientContext, siteUrl);
+    var instanceService = workflowServicesManager.getWorkflowInstanceService();
+    
+    var instances = instanceService.enumerateInstancesForSite();
+    clientContext.load(instances);
+
+    clientContext.executeQueryAsync(
+        function() {
+            var enumerator = instances.getEnumerator();
+            var suspendedInstances = [];
+            
+            while (enumerator.moveNext()) {
+                var instance = enumerator.get_current();
+                if (instance.get_status() === 5) { // 5 = Suspended state
+                    suspendedInstances.push(instance);
+                }
+            }
+
+            console.log(`🔍 Total Suspended Workflows Found: ${suspendedInstances.length}`);
+
+            if (suspendedInstances.length > 0) {
+                terminateSuspendedWorkflows(suspendedInstances);
+            } else {
+                console.log("✅ No suspended workflows found.");
+            }
+        },
+        function(sender, args) {
+            console.error("❌ Error fetching workflows: " + args.get_message());
+        }
+    );
+}
+
+function terminateSuspendedWorkflows(suspendedInstances) {
+    console.log("🛑 Terminating Suspended Workflows...");
+
+    var siteUrl = _spPageContextInfo.siteAbsoluteUrl;
+    var clientContext = new SP.ClientContext(siteUrl);
+    var workflowServicesManager = new SP.WorkflowServices.WorkflowServicesManager(clientContext, siteUrl);
+    var instanceService = workflowServicesManager.getWorkflowInstanceService();
+
+    suspendedInstances.forEach(function(instance) {
+        instanceService.cancelWorkflow(instance);
+    });
+
+    clientContext.executeQueryAsync(
+        function() {
+            console.log("✅ All suspended workflows have been terminated.");
+        },
+        function(sender, args) {
+            console.error("❌ Error terminating workflows: " + args.get_message());
+        }
+    );
+}
+</script>
