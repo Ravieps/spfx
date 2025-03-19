@@ -1,0 +1,119 @@
+<script type="text/javascript">
+    // SharePoint site URL and List Title (Replace these values)
+    var siteUrl = "https://your-sharepoint-site-url"; // Replace with your SharePoint site URL
+    var listTitle = "Your List Title"; // Replace with your list title
+
+    function loadSharePointScripts(callback) {
+        var scripts = [
+            "/_layouts/15/SP.Runtime.js",
+            "/_layouts/15/SP.js",
+            "/_layouts/15/SP.WorkflowServices.js"
+        ];
+        var loadedScripts = 0;
+
+        function scriptLoaded() {
+            loadedScripts++;
+            if (loadedScripts === scripts.length) {
+                console.log("All required SP scripts loaded successfully.");
+                // Ensure SP.ClientContext is available
+                if (typeof SP !== "undefined" && typeof SP.ClientContext !== "undefined") {
+                    callback();
+                } else {
+                    console.error("SP.ClientContext is still undefined after script loading.");
+                }
+            }
+        }
+
+        scripts.forEach(function (scriptUrl) {
+            var script = document.createElement("script");
+            script.src = scriptUrl;
+            script.type = "text/javascript";
+            script.onload = scriptLoaded;
+            script.onerror = function () {
+                console.error("Error loading script: " + scriptUrl);
+            };
+            document.head.appendChild(script);
+        });
+    }
+
+    function terminateSuspendedWorkflows(event) {
+        event.preventDefault(); // Prevents page reload
+
+        // Ensure SharePoint scripts are loaded before running workflow logic
+        loadSharePointScripts(function () {
+            console.log("Starting workflow termination process...");
+
+            var context = new SP.ClientContext(siteUrl);
+            if (!context) {
+                console.error("SP.ClientContext failed to initialize.");
+                return;
+            }
+
+            var list = context.get_web().get_lists().getByTitle(listTitle);
+            var wfMgr = new SP.WorkflowServices.WorkflowServicesManager(context, context.get_web());
+            var wfInstanceSvc = wfMgr.getWorkflowInstanceService();
+
+            var camlQuery = new SP.CamlQuery();
+            var listItems = list.getItems(camlQuery);
+            context.load(listItems);
+
+            context.executeQueryAsync(
+                function () {
+                    var enumerator = listItems.getEnumerator();
+                    var totalItems = listItems.get_count();
+
+                    if (totalItems === 0) {
+                        console.log("No items found in the list.");
+                        alert("No items found in the list.");
+                        return;
+                    }
+
+                    while (enumerator.moveNext()) {
+                        let listItem = enumerator.get_current();
+                        let itemId = listItem.get_id();
+
+                        // Get all workflow instances for the list item
+                        let wfInstances = wfInstanceSvc.enumerateInstancesForListItem(list.get_id(), itemId);
+                        context.load(wfInstances);
+
+                        context.executeQueryAsync(
+                            function () {
+                                let wfEnumerator = wfInstances.getEnumerator();
+                                let terminatedCount = 0;
+
+                                while (wfEnumerator.moveNext()) {
+                                    let wfInstance = wfEnumerator.get_current();
+
+                                    // Check if workflow is in "Suspended" state
+                                    if (wfInstance.get_status() === SP.WorkflowServices.WorkflowStatus.suspended) {
+                                        console.log("Suspended Workflow found for item ID: " + itemId);
+                                        wfInstanceSvc.terminateWorkflow(wfInstance);
+                                        terminatedCount++;
+                                    }
+                                }
+
+                                if (terminatedCount > 0) {
+                                    console.log("Terminated " + terminatedCount + " suspended workflows for item ID: " + itemId);
+                                }
+                            },
+                            function (sender, args) {
+                                console.log("Error fetching workflow instances: " + args.get_message());
+                            }
+                        );
+                    }
+                },
+                function (sender, args) {
+                    console.log("Error fetching list items: " + args.get_message());
+                    alert("Error fetching list items: " + args.get_message());
+                }
+            );
+        });
+    }
+</script>
+
+<!-- Button to trigger workflow termination -->
+<button id="terminateWorkflowsBtn">Terminate Suspended Workflows</button>
+
+<script type="text/javascript">
+    document.getElementById("terminateWorkflowsBtn").addEventListener("click", terminateSuspendedWorkflows);
+</script>
