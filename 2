@@ -1,0 +1,97 @@
+<script type="text/javascript" src="/_layouts/15/SP.Runtime.js"></script>
+<script type="text/javascript" src="/_layouts/15/SP.js"></script>
+<script type="text/javascript" src="/_layouts/15/SP.WorkflowServices.js"></script>
+
+<script type="text/javascript">
+    SP.SOD.executeFunc('SP.js', 'SP.ClientContext', function () {
+        console.log("SP.js loaded successfully.");
+        getSuspendedWorkflowsCount();
+    });
+
+    function getSuspendedWorkflowsCount() {
+        console.log("Initializing ClientContext...");
+        
+        var siteUrl = _spPageContextInfo ? _spPageContextInfo.webAbsoluteUrl : window.location.origin;
+        var clientContext = new SP.ClientContext(siteUrl); // Initialize correctly
+
+        if (!clientContext) {
+            console.error("ClientContext is not initialized.");
+            return;
+        }
+
+        var web = clientContext.get_web();
+        clientContext.load(web);
+
+        clientContext.executeQueryAsync(
+            function () {
+                console.log("Web loaded successfully: " + web.get_title());
+                fetchSuspendedWorkflows(clientContext);
+            },
+            function (sender, args) {
+                console.error("Error loading web: " + args.get_message());
+            }
+        );
+    }
+
+    function fetchSuspendedWorkflows(clientContext) {
+        console.log("Fetching list items...");
+
+        var listId = "YOUR-LIST-GUID"; // Replace with your list GUID
+        var list = clientContext.get_web().get_lists().getById(listId);
+        
+        var camlQuery = new SP.CamlQuery();
+        camlQuery.set_viewXml('<View><RowLimit>100</RowLimit></View>'); 
+
+        var listItems = list.getItems(camlQuery);
+        clientContext.load(listItems);
+
+        clientContext.executeQueryAsync(
+            function () {
+                var itemCount = listItems.get_count();
+                console.log("Total items found: " + itemCount);
+
+                if (itemCount === 0) {
+                    console.log("No items found in the list.");
+                    return;
+                }
+
+                var instanceService = new SP.WorkflowServices.WorkflowServicesManager(clientContext, siteUrl)
+                    .getWorkflowInstanceService();
+                var enumerator = listItems.getEnumerator();
+                var totalSuspended = 0;
+
+                while (enumerator.moveNext()) {
+                    var item = enumerator.get_current();
+                    var itemId = item.get_id();
+
+                    console.log("Checking workflow instances for Item ID: " + itemId);
+
+                    var instances = instanceService.enumerateInstancesForListItem(listId, itemId);
+                    clientContext.load(instances);
+
+                    clientContext.executeQueryAsync(
+                        function () {
+                            var workflowEnumerator = instances.getEnumerator();
+                            while (workflowEnumerator.moveNext()) {
+                                var workflowInstance = workflowEnumerator.get_current();
+                                var status = workflowInstance.get_status();
+
+                                // Check if the workflow is in Suspended state (value 5)
+                                if (status === 5) {
+                                    totalSuspended++;
+                                }
+                            }
+                            console.log("Total Suspended Workflows: " + totalSuspended);
+                        },
+                        function (sender, args) {
+                            console.error("Error retrieving workflow instances: " + args.get_message());
+                        }
+                    );
+                }
+            },
+            function (sender, args) {
+                console.error("Error retrieving list items: " + args.get_message());
+            }
+        );
+    }
+</script>
