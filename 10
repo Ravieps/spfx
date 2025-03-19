@@ -1,0 +1,79 @@
+<script type="text/javascript" src="/_layouts/15/SP.Runtime.js"></script>
+<script type="text/javascript" src="/_layouts/15/SP.js"></script>
+<script type="text/javascript" src="/_layouts/15/SP.WorkflowServices.js"></script>
+
+<script type="text/javascript">
+    // SharePoint site URL
+    var siteUrl = "https://your-sharepoint-site-url"; // Replace with your SharePoint site URL
+    var listTitle = "Your List Title"; // Replace with your list title
+
+    function terminateSuspendedWorkflows() {
+        var context = new SP.ClientContext(siteUrl);
+        var list = context.get_web().get_lists().getByTitle(listTitle);
+        var wfMgr = new SP.WorkflowServices.WorkflowServicesManager(context.get_web());
+        var wfInstanceSvc = wfMgr.get_workflowInstanceService();
+
+        // Get all list items (Modify query as needed)
+        var camlQuery = new SP.CamlQuery();
+        var listItems = list.getItems(camlQuery);
+        context.load(listItems);
+
+        context.executeQueryAsync(
+            function () {
+                var enumerator = listItems.getEnumerator();
+                var itemsProcessed = 0;
+                var totalItems = listItems.get_count();
+
+                if (totalItems === 0) {
+                    alert("No items found in the list.");
+                    return;
+                }
+
+                while (enumerator.moveNext()) {
+                    var listItem = enumerator.get_current();
+                    var itemId = listItem.get_id();
+
+                    // Get all workflow instances for the list item
+                    var wfInstances = wfInstanceSvc.enumerateInstancesForListItem(list.get_id(), itemId);
+                    context.load(wfInstances);
+
+                    context.executeQueryAsync(
+                        function () {
+                            var wfEnumerator = wfInstances.getEnumerator();
+                            var terminatedCount = 0;
+
+                            while (wfEnumerator.moveNext()) {
+                                var wfInstance = wfEnumerator.get_current();
+
+                                // Check if workflow is in "Suspended" state
+                                if (wfInstance.get_status() === SP.WorkflowServices.WorkflowStatus.suspended) {
+                                    console.log("Suspended Workflow found for item ID: " + itemId);
+                                    wfInstanceSvc.terminateWorkflow(wfInstance);
+                                    terminatedCount++;
+                                }
+                            }
+
+                            if (terminatedCount > 0) {
+                                console.log("Terminated " + terminatedCount + " suspended workflows for item ID: " + itemId);
+                            }
+
+                            itemsProcessed++;
+                            if (itemsProcessed === totalItems) {
+                                alert("All suspended workflows have been processed.");
+                            }
+                        },
+                        function (sender, args) {
+                            console.log("Error fetching workflow instances: " + args.get_message());
+                        }
+                    );
+                }
+            },
+            function (sender, args) {
+                console.log("Error fetching list items: " + args.get_message());
+                alert("Error fetching list items: " + args.get_message());
+            }
+        );
+    }
+</script>
+
+<button onclick="terminateSuspendedWorkflows()">Terminate Suspended Workflows</button>
