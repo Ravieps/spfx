@@ -1,0 +1,122 @@
+SP.SOD.executeFunc('SP.js', 'SP.ClientContext', function () {
+    console.log("SP.js loaded successfully.");
+
+    // Ensure SP.WorkflowServices.js is loaded before using WorkflowServicesManager
+    SP.SOD.loadMultiple(['sp.workflowservices.js'], function() {
+        console.log("SP.WorkflowServices.js loaded successfully.");
+
+        // Ensure siteUrl is properly defined
+        var siteUrl = _spPageContextInfo && _spPageContextInfo.webAbsoluteUrl 
+            ? _spPageContextInfo.webAbsoluteUrl 
+            : window.location.origin;
+
+        if (!siteUrl) {
+            console.error("Error: siteUrl is undefined.");
+            return;
+        }
+
+        console.log("Using siteUrl:", siteUrl);
+        getSuspendedWorkflowsCount(siteUrl);
+    });
+});
+
+function getSuspendedWorkflowsCount(siteUrl) {
+    console.log("Initializing ClientContext...");
+
+    var clientContext = new SP.ClientContext(siteUrl);
+    var web = clientContext.get_web();
+    
+    clientContext.load(web);
+    clientContext.executeQueryAsync(
+        function () {
+            console.log("Web loaded successfully: " + web.get_title());
+            fetchSuspendedWorkflows(clientContext, siteUrl);
+        },
+        function (sender, args) {
+            console.error("Error loading web: " + args.get_message());
+        }
+    );
+}
+
+function fetchSuspendedWorkflows(clientContext, siteUrl) {
+    console.log("Fetching list items...");
+
+    var listId = "YOUR-LIST-GUID";  // Replace with actual list GUID
+    var list = clientContext.get_web().get_lists().getById(listId);
+    var camlQuery = new SP.CamlQuery();
+    camlQuery.set_viewXml('<View><RowLimit>100</RowLimit></View>'); 
+
+    var listItems = list.getItems(camlQuery);
+    clientContext.load(listItems);
+
+    clientContext.executeQueryAsync(
+        function () {
+            var itemCount = listItems.get_count();
+            console.log("Total items found: " + itemCount);
+
+            if (itemCount === 0) {
+                console.log("No items found in the list.");
+                return;
+            }
+
+            console.log("Initializing WorkflowServicesManager...");
+            try {
+                var workflowManager = new SP.WorkflowServices.WorkflowServicesManager(clientContext, clientContext.get_web());
+                var instanceService = workflowManager.getWorkflowInstanceService();
+
+                console.log("WorkflowServicesManager initialized successfully.");
+                processWorkflowInstances(clientContext, instanceService, listItems, listId);
+            } catch (error) {
+                console.error("Error initializing WorkflowServicesManager: ", error);
+            }
+
+        },
+        function (sender, args) {
+            console.error("Error retrieving list items: " + args.get_message());
+        }
+    );
+}
+
+function processWorkflowInstances(clientContext, instanceService, listItems, listId) {
+    console.log("Processing workflow instances...");
+
+    var enumerator = listItems.getEnumerator();
+    var totalSuspended = 0;
+    var asyncCalls = [];
+
+    while (enumerator.moveNext()) {
+        let item = enumerator.get_current();
+        let itemId = item.get_id();
+
+        console.log("Checking workflow instances for Item ID: " + itemId);
+
+        let instances = instanceService.enumerateInstancesForListItem(listId, itemId);
+        clientContext.load(instances);
+
+        asyncCalls.push(new Promise((resolve, reject) => {
+            clientContext.executeQueryAsync(
+                function () {
+                    let workflowEnumerator = instances.getEnumerator();
+                    while (workflowEnumerator.moveNext()) {
+                        let workflowInstance = workflowEnumerator.get_current();
+                        let status = workflowInstance.get_status();
+                        if (status === 5) { // 5 = Suspended
+                            totalSuspended++;
+                        }
+                    }
+                    resolve();
+                },
+                function (sender, args) {
+                    console.error("Error retrieving workflow instances: " + args.get_message());
+                    reject(args.get_message());
+                }
+            );
+        }));
+    }
+
+    Promise.all(asyncCalls).then(() => {
+        console.log("Total Suspended Workflows: " + totalSuspended);
+    }).catch(error => {
+        console.error("Error processing workflows: " + error);
+    });
+}
