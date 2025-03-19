@@ -1,0 +1,113 @@
+<!-- Load jQuery -->
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+
+<script>
+$(document).ready(function () {
+    // Add a button to terminate workflows
+    $("body").append('<button id="terminateWorkflowsBtn" style="position:fixed;bottom:20px;right:20px;padding:10px 15px;background:#d9534f;color:white;border:none;border-radius:5px;cursor:pointer;z-index:1000;">Terminate Suspended Workflows</button>');
+
+    var siteUrl = _spPageContextInfo.webAbsoluteUrl;
+    var listName = "Your List Name"; // Change this to your list name
+
+    $("#terminateWorkflowsBtn").click(function () {
+        $("#terminateWorkflowsBtn").prop("disabled", true).text("Processing...");
+
+        // Get request digest
+        $.ajax({
+            url: siteUrl + "/_api/contextinfo",
+            method: "POST",
+            headers: { "Accept": "application/json;odata=verbose" },
+            success: function (response) {
+                var requestDigest = response.d.GetContextWebInformation.FormDigestValue;
+                getListGUID(requestDigest);
+            },
+            error: function () {
+                alert("Error fetching request digest.");
+                $("#terminateWorkflowsBtn").prop("disabled", false).text("Terminate Suspended Workflows");
+            }
+        });
+    });
+
+    function getListGUID(requestDigest) {
+        $.ajax({
+            url: siteUrl + "/_api/web/lists/getbytitle('" + listName + "')?$select=Id",
+            method: "GET",
+            headers: { "Accept": "application/json;odata=verbose" },
+            success: function (response) {
+                var listGUID = response.d.Id;
+                getSuspendedWorkflows(requestDigest, listGUID);
+            },
+            error: function () {
+                alert("Error fetching list GUID.");
+                $("#terminateWorkflowsBtn").prop("disabled", false).text("Terminate Suspended Workflows");
+            }
+        });
+    }
+
+    function getSuspendedWorkflows(requestDigest, listGUID) {
+        $.ajax({
+            url: siteUrl + "/_api/SP.WorkflowServices.WorkflowInstanceService.EnumerateInstances",
+            method: "POST",
+            headers: {
+                "Accept": "application/json;odata=verbose",
+                "X-RequestDigest": requestDigest,
+                "Content-Type": "application/json"
+            },
+            data: JSON.stringify({ listId: listGUID }),
+            success: function (data) {
+                var suspendedWorkflows = data.d.results.filter(wf => wf.Status === "Suspended");
+
+                if (suspendedWorkflows.length === 0) {
+                    alert("No suspended workflows found.");
+                    $("#terminateWorkflowsBtn").prop("disabled", false).text("Terminate Suspended Workflows");
+                    return;
+                }
+
+                var confirmTermination = confirm("Found " + suspendedWorkflows.length + " suspended workflows. Do you want to proceed with termination?");
+                if (confirmTermination) {
+                    terminateSuspendedWorkflows(requestDigest, suspendedWorkflows);
+                } else {
+                    alert("Termination canceled.");
+                    $("#terminateWorkflowsBtn").prop("disabled", false).text("Terminate Suspended Workflows");
+                }
+            },
+            error: function () {
+                alert("Error fetching workflows.");
+                $("#terminateWorkflowsBtn").prop("disabled", false).text("Terminate Suspended Workflows");
+            }
+        });
+    }
+
+    function terminateSuspendedWorkflows(requestDigest, suspendedWorkflows) {
+        var terminatedCount = 0;
+        var processedWorkflows = 0;
+        var totalWorkflows = suspendedWorkflows.length;
+
+        suspendedWorkflows.forEach(function (workflow) {
+            $.ajax({
+                url: siteUrl + "/_api/SP.WorkflowServices.WorkflowInstanceService.CancelWorkflow",
+                method: "POST",
+                headers: {
+                    "Accept": "application/json;odata=verbose",
+                    "X-RequestDigest": requestDigest,
+                    "Content-Type": "application/json"
+                },
+                data: JSON.stringify({ instanceId: workflow.Id }),
+                success: function () {
+                    terminatedCount++;
+                },
+                error: function () {
+                    console.log("Error terminating workflow: " + workflow.Id);
+                },
+                complete: function () {
+                    processedWorkflows++;
+                    if (processedWorkflows === totalWorkflows) {
+                        alert("Terminated " + terminatedCount + " suspended workflows.");
+                        $("#terminateWorkflowsBtn").prop("disabled", false).text("Terminate Suspended Workflows");
+                    }
+                }
+            });
+        });
+    }
+});
+</script>
