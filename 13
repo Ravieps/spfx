@@ -1,0 +1,113 @@
+<!-- Load jQuery if not already available -->
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+
+<script>
+$(document).ready(function () {
+    // Append a button to run the workflow termination
+    $("body").append('<button id="terminateWorkflowsBtn" style="position:fixed;bottom:20px;right:20px;padding:10px 15px;background:#d9534f;color:white;border:none;border-radius:5px;cursor:pointer;z-index:1000;">Terminate Suspended Workflows</button>');
+
+    // SharePoint Site URL
+    var siteUrl = _spPageContextInfo.webAbsoluteUrl;
+    
+    // SharePoint List Name
+    var listName = "Your List Name";  // Change this to your actual list name
+
+    // Click event for the button
+    $("#terminateWorkflowsBtn").click(function () {
+        // Disable button to prevent multiple clicks
+        $("#terminateWorkflowsBtn").prop("disabled", true).text("Processing...");
+
+        // Fetch request digest dynamically
+        $.ajax({
+            url: siteUrl + "/_api/contextinfo",
+            method: "POST",
+            headers: {
+                "Accept": "application/json;odata=verbose"
+            },
+            success: function (response) {
+                var requestDigest = response.d.GetContextWebInformation.FormDigestValue;
+                terminateSuspendedWorkflows(requestDigest);
+            },
+            error: function (error) {
+                alert("Error fetching request digest: " + JSON.stringify(error));
+                $("#terminateWorkflowsBtn").prop("disabled", false).text("Terminate Suspended Workflows");
+            }
+        });
+    });
+
+    // Function to terminate suspended workflows
+    function terminateSuspendedWorkflows(requestDigest) {
+        $.ajax({
+            url: siteUrl + "/_api/web/lists/getbytitle('" + listName + "')/items",
+            method: "GET",
+            headers: {
+                "Accept": "application/json;odata=verbose"
+            },
+            success: function (data) {
+                var items = data.d.results;
+                if (items.length === 0) {
+                    alert("No items found in the list.");
+                    $("#terminateWorkflowsBtn").prop("disabled", false).text("Terminate Suspended Workflows");
+                    return;
+                }
+
+                var terminatedCount = 0;
+                var totalWorkflows = 0;
+
+                // Loop through each list item
+                items.forEach(function (item) {
+                    var itemId = item.Id;
+
+                    // Get workflows for this item
+                    $.ajax({
+                        url: siteUrl + "/_api/SP.WorkflowServices.WorkflowInstanceService.EnumerateInstancesForListItem?listId='" + listName + "'&itemId=" + itemId,
+                        method: "GET",
+                        headers: {
+                            "Accept": "application/json;odata=verbose"
+                        },
+                        success: function (workflowData) {
+                            var workflows = workflowData.d.results;
+                            totalWorkflows += workflows.length;
+
+                            workflows.forEach(function (workflow) {
+                                if (workflow.Status === "Suspended") {
+                                    // Terminate workflow
+                                    $.ajax({
+                                        url: siteUrl + "/_api/SP.WorkflowServices.WorkflowInstanceService.CancelWorkflow",
+                                        method: "POST",
+                                        headers: {
+                                            "Accept": "application/json;odata=verbose",
+                                            "X-RequestDigest": requestDigest,
+                                            "Content-Type": "application/json"
+                                        },
+                                        data: JSON.stringify({ instanceId: workflow.Id }),
+                                        success: function () {
+                                            terminatedCount++;
+                                            if (terminatedCount === totalWorkflows) {
+                                                alert("Successfully terminated " + terminatedCount + " suspended workflows.");
+                                                $("#terminateWorkflowsBtn").prop("disabled", false).text("Terminate Suspended Workflows");
+                                            }
+                                        },
+                                        error: function (error) {
+                                            alert("Error terminating workflow for Item ID " + itemId + ": " + JSON.stringify(error));
+                                            $("#terminateWorkflowsBtn").prop("disabled", false).text("Terminate Suspended Workflows");
+                                        }
+                                    });
+                                }
+                            });
+                        },
+                        error: function (error) {
+                            alert("Error fetching workflows for Item ID " + itemId + ": " + JSON.stringify(error));
+                            $("#terminateWorkflowsBtn").prop("disabled", false).text("Terminate Suspended Workflows");
+                        }
+                    });
+                });
+            },
+            error: function (error) {
+                alert("Error fetching list items: " + JSON.stringify(error));
+                $("#terminateWorkflowsBtn").prop("disabled", false).text("Terminate Suspended Workflows");
+            }
+        });
+    }
+});
+</script>
