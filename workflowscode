@@ -1,0 +1,62 @@
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+<script type="text/javascript">
+    function TriggerWorkflowForSelectedItems() {
+        var selectedItems = SP.ListOperation.Selection.getSelectedItems();
+        if (selectedItems.length === 0) {
+            alert("Please select at least one item.");
+            return;
+        }
+
+        var siteUrl = _spPageContextInfo.webAbsoluteUrl;
+        var listId = _spPageContextInfo.pageListId.replace(/[{}]/g, ""); // Get List ID dynamically
+        var workflowSubscriptionId = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"; // Change to your workflow GUID
+
+        // First, fetch the Request Digest value
+        $.ajax({
+            url: siteUrl + "/_api/contextinfo",
+            type: "POST",
+            headers: {
+                "Accept": "application/json;odata=verbose"
+            },
+            success: function (data) {
+                var requestDigest = data.d.GetContextWebInformation.FormDigestValue;
+
+                // Now start workflows for all selected items
+                for (var i = 0; i < selectedItems.length; i++) {
+                    var itemId = selectedItems[i].id;
+                    StartWorkflow2013(itemId, workflowSubscriptionId, siteUrl, listId, requestDigest);
+                }
+            },
+            error: function (error) {
+                console.log("Error fetching request digest: ", error);
+            }
+        });
+    }
+
+    function StartWorkflow2013(itemId, workflowSubscriptionId, siteUrl, listId, requestDigest) {
+        var requestUrl = siteUrl + "/_api/SP.WorkflowServices.WorkflowInstanceService.StartWorkflowOnListItem";
+
+        var requestBody = JSON.stringify({
+            "itemId": itemId,
+            "listId": listId,
+            "workflowSubscriptionId": workflowSubscriptionId
+        });
+
+        $.ajax({
+            url: requestUrl,
+            type: "POST",
+            data: requestBody,
+            headers: {
+                "Accept": "application/json;odata=verbose",
+                "Content-Type": "application/json;odata=verbose",
+                "X-RequestDigest": requestDigest
+            },
+            success: function (data) {
+                console.log("Workflow started for item ID: " + itemId);
+            },
+            error: function (error) {
+                console.log("Error starting workflow: ", error);
+            }
+        });
+    }
+</script>
