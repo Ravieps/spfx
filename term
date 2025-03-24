@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stop Workflow</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <style>
+        #stopWorkflowBtn {
+            padding: 10px 20px;
+            background-color: #d9534f;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+        #stopWorkflowBtn:hover {
+            background-color: #c9302c;
+        }
+    </style>
+</head>
+<body>
+
+    <button id="stopWorkflowBtn">Stop Workflow</button>
+
+    <script type="text/javascript">
+        $(document).ready(function () {
+            console.log("Page Loaded - Stop Workflow Button Ready");
+
+            $("#stopWorkflowBtn").click(function () {
+                console.log("Button Clicked!");
+
+                var selectedItems = getSelectedItems();
+                console.log("Selected Items:", selectedItems);
+
+                if (selectedItems.length === 0) {
+                    alert("Please select at least one item!");
+                    return;
+                }
+
+                var siteUrl = _spPageContextInfo.webAbsoluteUrl;
+                var listId = _spPageContextInfo.pageListId.replace(/[{}]/g, ""); // Get List ID dynamically
+
+                // Fetch Request Digest Value
+                $.ajax({
+                    url: siteUrl + "/_api/contextinfo",
+                    type: "POST",
+                    headers: { "Accept": "application/json;odata=verbose" },
+                    success: function (data) {
+                        var requestDigest = data.d.GetContextWebInformation.FormDigestValue;
+                        console.log("Request Digest Received:", requestDigest);
+
+                        // Stop workflow for each selected item
+                        selectedItems.forEach(function (itemId) {
+                            getActiveWorkflowInstances(itemId, listId, siteUrl, requestDigest);
+                        });
+                    },
+                    error: function (error) {
+                        console.error("Error fetching request digest:", error);
+                        alert("Error fetching request digest. See console for details.");
+                    }
+                });
+            });
+
+            function getSelectedItems() {
+                var selected = [];
+                var selectedElements = SP.ListOperation.Selection.getSelectedItems();
+                if (selectedElements.length > 0) {
+                    selectedElements.forEach(function (item) {
+                        selected.push(item.id);
+                    });
+                }
+                return selected;
+            }
+
+            function getActiveWorkflowInstances(itemId, listId, siteUrl, requestDigest) {
+                var requestUrl = siteUrl + "/_api/sp.workflowservices.workflowinstanceservice.enumerateinstancesforlistitem(listid='" + listId + "',itemid='" + itemId + "')";
+
+                console.log("Fetching active workflows for Item ID:", itemId);
+                console.log("API URL:", requestUrl);
+
+                $.ajax({
+                    url: requestUrl,
+                    type: "GET",
+                    headers: {
+                        "Accept": "application/json;odata=verbose"
+                    },
+                    success: function (data) {
+                        var instances = data.d.items;
+                        if (instances.length > 0) {
+                            console.log("Active Workflow Instances Found:", instances);
+                            instances.forEach(function (instance) {
+                                stopWorkflow(instance.Id, siteUrl, requestDigest);
+                            });
+                        } else {
+                            console.log("No active workflows found for Item ID:", itemId);
+                            alert("No active workflows found for Item ID: " + itemId);
+                        }
+                    },
+                    error: function (error) {
+                        console.error("Error fetching active workflows:", error);
+                        alert("Error fetching active workflows. See console for details.");
+                    }
+                });
+            }
+
+            function stopWorkflow(instanceId, siteUrl, requestDigest) {
+                var requestUrl = siteUrl + "/_api/sp.workflowservices.workflowinstanceservice.terminateworkflow(instanceid='" + instanceId + "')";
+
+                console.log("Stopping Workflow Instance ID:", instanceId);
+                console.log("API URL:", requestUrl);
+
+                $.ajax({
+                    url: requestUrl,
+                    type: "POST",
+                    headers: {
+                        "Accept": "application/json;odata=verbose",
+                        "Content-Type": "application/json;odata=verbose",
+                        "X-RequestDigest": requestDigest
+                    },
+                    success: function (data) {
+                        console.log("Workflow stopped successfully for Instance ID:", instanceId);
+                        alert("Workflow stopped successfully for Instance ID: " + instanceId);
+                    },
+                    error: function (error) {
+                        console.error("Error stopping workflow:", error);
+                        alert("Error stopping workflow. See console for details.");
+                    }
+                });
+            }
+        });
+    </script>
+
+</body>
+</html>
