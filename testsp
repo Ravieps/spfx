@@ -1,0 +1,41 @@
+import os
+import urllib3
+from shareplum import Site
+from shareplum.site import Version
+from requests_ntlm import HttpNtlmAuth
+import requests
+
+# Suppress SSL warnings
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+# SharePoint credentials and site info
+USERNAME = 'domain\\your_username'  # Use domain\\username format
+PASSWORD = 'your_password'
+SHAREPOINT_URL = 'https://your-sharepoint-site-url'  # No trailing slash
+SITE_NAME = 'sites/yoursite'  # Example: 'sites/hr'
+DOC_LIB = 'Shared Documents'  # Your document library name
+FOLDER_PATH = r'C:\Path\To\Your\ExcelFiles'  # Path to local Excel files
+
+# Authenticate using NTLM
+session = requests.Session()
+session.auth = HttpNtlmAuth(USERNAME, PASSWORD)
+session.verify = False  # Disable SSL verification
+
+# Connect to the site
+site_url = f"{SHAREPOINT_URL}/{SITE_NAME}"
+site = Site(site_url, version=Version.v2016, auth=session)
+
+# Connect to the folder inside the document library
+folder = site.Folder(DOC_LIB)
+
+# Loop through files and upload
+for filename in os.listdir(FOLDER_PATH):
+    if filename.endswith('.xlsx') or filename.endswith('.xls'):
+        file_path = os.path.join(FOLDER_PATH, filename)
+        with open(file_path, 'rb') as file:
+            file_content = file.read()
+            try:
+                folder.upload_file(file_content, filename)
+                print(f"Uploaded: {filename}")
+            except Exception as e:
+                print(f"Failed to upload {filename}: {e}")
