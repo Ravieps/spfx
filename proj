@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SharePoint Master Page Template</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+        }
+
+        /* Header styles */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #003366;
+            color: white;
+            padding: 10px 20px;
+        }
+
+        .header-left,
+        .header-center,
+        .header-right {
+            flex: 1;
+        }
+
+        .header-left img,
+        .header-right img {
+            max-height: 40px;
+        }
+
+        .header-center {
+            text-align: center;
+        }
+
+        .search-bar {
+            width: 60%;
+            padding: 8px;
+            border-radius: 4px;
+            border: none;
+            font-size: 16px;
+        }
+
+        .header-right {
+            text-align: right;
+        }
+
+        .greeting {
+            display: inline-block;
+            margin-left: 10px;
+            vertical-align: middle;
+        }
+
+        /* Footer styles */
+        .footer {
+            background-color: #003366;
+            color: white;
+            text-align: center;
+            padding: 15px 20px;
+            position: relative;
+            bottom: 0;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header Section -->
+    <header class="header">
+        <div class="header-left">
+            <img src="logo-left.png" alt="Left Logo">
+        </div>
+        <div class="header-center">
+            <input type="text" class="search-bar" placeholder="Search...">
+        </div>
+        <div class="header-right">
+            <img src="logo-right.png" alt="Right Logo">
+            <span class="greeting">Welcome, User</span>
+        </div>
+    </header>
+
+    <!-- Main Content Placeholder -->
+    <main>
+        <!-- SharePoint content will be injected here -->
+    </main>
+
+    <!-- Footer Section -->
+    <footer class="footer">
+        &copy; 2025 Your Company Name. All rights reserved.
+    </footer>
+
+</body>
+</html>
