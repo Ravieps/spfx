@@ -1,0 +1,164 @@
+<!-- jQuery (if not already loaded) -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<style>
+  .carousel-container {
+    position: relative;
+    width: 100%;
+    max-width: 1000px;
+    margin: auto;
+    overflow: hidden;
+    background-color: #f4f4f4;
+    border-radius: 8px;
+    font-family: 'Segoe UI', sans-serif;
+  }
+
+  .carousel-slide {
+    display: flex;
+    flex-wrap: nowrap;
+    transition: transform 0.8s ease-in-out;
+    width: 100%;
+  }
+
+  .carousel-item {
+    min-width: 100%;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    padding: 20px;
+    box-sizing: border-box;
+  }
+
+  .carousel-img {
+    flex: 0 0 40%;
+    padding-right: 20px;
+  }
+
+  .carousel-img img {
+    width: 100%;
+    height: auto;
+    border-radius: 6px;
+  }
+
+  .carousel-content {
+    flex: 0 0 60%;
+  }
+
+  .carousel-content h3 {
+    margin-top: 0;
+    font-size: 22px;
+    color: #333;
+  }
+
+  .carousel-content p {
+    font-size: 16px;
+    color: #555;
+  }
+
+  .carousel-arrow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: #000000a0;
+    color: white;
+    padding: 12px;
+    border-radius: 50%;
+    cursor: pointer;
+    z-index: 10;
+  }
+
+  .arrow-left {
+    left: 10px;
+  }
+
+  .arrow-right {
+    right: 10px;
+  }
+</style>
+
+<div class="carousel-container">
+  <div class="carousel-arrow arrow-left">&#10094;</div>
+  <div class="carousel-arrow arrow-right">&#10095;</div>
+  <div class="carousel-slide" id="carouselSlide">
+    <!-- Items will be injected dynamically -->
+  </div>
+</div>
+
+<script>
+  $(document).ready(function () {
+    const siteUrl = _spPageContextInfo.webAbsoluteUrl;
+    const listName = "CarouselContent";
+    const $carousel = $('#carouselSlide');
+    let currentIndex = 0;
+    let totalItems = 0;
+    let interval;
+
+    function fetchCarouselItems() {
+      $.ajax({
+        url: siteUrl + "/_api/web/lists/getbytitle('" + listName + "')/items?$orderby=Id desc",
+        method: "GET",
+        headers: { "Accept": "application/json; odata=verbose" },
+        success: function (data) {
+          const items = data.d.results;
+          totalItems = items.length;
+
+          items.forEach(item => {
+            const html = `
+              <div class="carousel-item">
+                <div class="carousel-img">
+                  <img src="${item.ImageURL || 'https://via.placeholder.com/400'}" alt="Image">
+                </div>
+                <div class="carousel-content">
+                  <h3>${item.Title}</h3>
+                  <p>${item.Content}</p>
+                </div>
+              </div>
+            `;
+            $carousel.append(html);
+          });
+
+          startAutoRotate();
+        },
+        error: function (err) {
+          console.log("Error fetching carousel items", err);
+        }
+      });
+    }
+
+    function showSlide(index) {
+      const offset = -index * 100;
+      $carousel.css('transform', `translateX(${offset}%)`);
+    }
+
+    function nextSlide() {
+      currentIndex = (currentIndex + 1) % totalItems;
+      showSlide(currentIndex);
+    }
+
+    function prevSlide() {
+      currentIndex = (currentIndex - 1 + totalItems) % totalItems;
+      showSlide(currentIndex);
+    }
+
+    function startAutoRotate() {
+      interval = setInterval(nextSlide, 6000);
+    }
+
+    function resetAutoRotate() {
+      clearInterval(interval);
+      startAutoRotate();
+    }
+
+    $('.arrow-right').click(function () {
+      nextSlide();
+      resetAutoRotate();
+    });
+
+    $('.arrow-left').click(function () {
+      prevSlide();
+      resetAutoRotate();
+    });
+
+    fetchCarouselItems();
+  });
+</script>
