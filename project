@@ -1,0 +1,65 @@
+import os
+import requests
+from requests_ntlm import HttpNtlmAuth
+
+# SharePoint configuration
+sharepoint_site = "http://your-sharepoint-site"
+document_library = "Shared Documents"
+username = "DOMAIN\\your_username"
+password = "your_password"
+local_folder_path = "C:/path/to/excel/files"
+
+# File-to-folder mapping (filename -> target SharePoint folder)
+file_folder_map = {
+    "Report1.xlsx": "Finance",
+    "Inventory.xlsx": "InventoryReports",
+    "Summary.xlsx": "Executives",
+}
+
+# REST API URL for getting folders
+folders_api_url = f"{sharepoint_site}/_api/web/GetFolderByServerRelativeUrl('{document_library}')/Folders"
+
+# Setup NTLM authentication
+auth = HttpNtlmAuth(username, password)
+
+# Fetch list of existing folders
+response = requests.get(folders_api_url, auth=auth, headers={"Accept": "application/json;odata=verbose"})
+folder_names = []
+
+if response.status_code == 200:
+    data = response.json()
+    folder_names = [folder["Name"] for folder in data["d"]["results"] if not folder["Name"].startswith("Forms")]
+else:
+    print("Failed to fetch folder names:", response.text)
+    exit()
+
+# Upload files based on mapping
+not_found_folders = []
+
+for file_name, folder_name in file_folder_map.items():
+    if folder_name not in folder_names:
+        not_found_folders.append(folder_name)
+        continue
+
+    file_path = os.path.join(local_folder_path, file_name)
+    if not os.path.exists(file_path):
+        print(f"File not found locally: {file_path}")
+        continue
+
+    with open(file_path, 'rb') as file_data:
+        upload_url = f"{sharepoint_site}/_api/web/GetFolderByServerRelativeUrl('{document_library}/{folder_name}')/Files/add(url='{file_name}',overwrite=true)"
+        headers = {"Accept": "application/json;odata=verbose", "Content-Type": "application/octet-stream"}
+        upload_response = requests.post(upload_url, data=file_data, auth=auth, headers=headers)
+
+        if upload_response.status_code == 200:
+            print(f"Uploaded: {file_name} to folder: {folder_name}")
+        else:
+            print(f"Failed to upload {file_name}: {upload_response.text}")
+
+# Report any folders not found
+if not_found_folders:
+    print("\nThese folders were not found in SharePoint:")
+    for folder in set(not_found_folders):
+        print(f"- {folder}")
+else:
+    print("\nAll mapped files uploaded successfully.")
