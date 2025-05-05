@@ -1,164 +1,58 @@
-<!-- jQuery (if not already loaded) -->
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+import os
+import requests
+from requests_ntlm import HttpNtlmAuth
 
-<style>
-  .carousel-container {
-    position: relative;
-    width: 100%;
-    max-width: 1000px;
-    margin: auto;
-    overflow: hidden;
-    background-color: #f4f4f4;
-    border-radius: 8px;
-    font-family: 'Segoe UI', sans-serif;
-  }
+# SharePoint credentials and config
+sharepoint_site = "http://your-sharepoint-site"
+document_library = "Shared Documents"
+username = "DOMAIN\\your_username"
+password = "your_password"
+local_folder_path = "C:/path/to/excel/files"
 
-  .carousel-slide {
-    display: flex;
-    flex-wrap: nowrap;
-    transition: transform 0.8s ease-in-out;
-    width: 100%;
-  }
+# SharePoint folder and REST API base
+upload_url_base = f"{sharepoint_site}/_api/web/GetFolderByServerRelativeUrl('{document_library}')/Files/add(url='{{filename}}',overwrite=true)"
+folders_api_url = f"{sharepoint_site}/_api/web/GetFolderByServerRelativeUrl('{document_library}')/Folders"
 
-  .carousel-item {
-    min-width: 100%;
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    padding: 20px;
-    box-sizing: border-box;
-  }
+# NTLM auth
+auth = HttpNtlmAuth(username, password)
 
-  .carousel-img {
-    flex: 0 0 40%;
-    padding-right: 20px;
-  }
+# Get existing folders from document library
+response = requests.get(folders_api_url, auth=auth, headers={"Accept": "application/json;odata=verbose"})
+folder_names = []
 
-  .carousel-img img {
-    width: 100%;
-    height: auto;
-    border-radius: 6px;
-  }
+if response.status_code == 200:
+    data = response.json()
+    folder_names = [folder["Name"] for folder in data["d"]["results"] if not folder["Name"].startswith("Forms")]
+else:
+    print("Failed to fetch folder names:", response.text)
+    exit()
 
-  .carousel-content {
-    flex: 0 0 60%;
-  }
+# Loop through Excel files
+not_found_folders = []
 
-  .carousel-content h3 {
-    margin-top: 0;
-    font-size: 22px;
-    color: #333;
-  }
+for file_name in os.listdir(local_folder_path):
+    if file_name.endswith(".xlsx") or file_name.endswith(".xls"):
+        file_base = os.path.splitext(file_name)[0]
 
-  .carousel-content p {
-    font-size: 16px;
-    color: #555;
-  }
+        if file_base in folder_names:
+            file_path = os.path.join(local_folder_path, file_name)
 
-  .carousel-arrow {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    background: #000000a0;
-    color: white;
-    padding: 12px;
-    border-radius: 50%;
-    cursor: pointer;
-    z-index: 10;
-  }
+            with open(file_path, 'rb') as file_data:
+                upload_url = f"{sharepoint_site}/_api/web/GetFolderByServerRelativeUrl('{document_library}/{file_base}')/Files/add(url='{file_name}',overwrite=true)"
+                headers = {"Accept": "application/json;odata=verbose", "Content-Type": "application/octet-stream"}
+                upload_response = requests.post(upload_url, data=file_data, auth=auth, headers=headers)
 
-  .arrow-left {
-    left: 10px;
-  }
+                if upload_response.status_code == 200:
+                    print(f"Uploaded: {file_name} to folder: {file_base}")
+                else:
+                    print(f"Failed to upload {file_name}: {upload_response.text}")
+        else:
+            not_found_folders.append(file_base)
 
-  .arrow-right {
-    right: 10px;
-  }
-</style>
-
-<div class="carousel-container">
-  <div class="carousel-arrow arrow-left">&#10094;</div>
-  <div class="carousel-arrow arrow-right">&#10095;</div>
-  <div class="carousel-slide" id="carouselSlide">
-    <!-- Items will be injected dynamically -->
-  </div>
-</div>
-
-<script>
-  $(document).ready(function () {
-    const siteUrl = _spPageContextInfo.webAbsoluteUrl;
-    const listName = "CarouselContent";
-    const $carousel = $('#carouselSlide');
-    let currentIndex = 0;
-    let totalItems = 0;
-    let interval;
-
-    function fetchCarouselItems() {
-      $.ajax({
-        url: siteUrl + "/_api/web/lists/getbytitle('" + listName + "')/items?$orderby=Id desc",
-        method: "GET",
-        headers: { "Accept": "application/json; odata=verbose" },
-        success: function (data) {
-          const items = data.d.results;
-          totalItems = items.length;
-
-          items.forEach(item => {
-            const html = `
-              <div class="carousel-item">
-                <div class="carousel-img">
-                  <img src="${item.ImageURL || 'https://via.placeholder.com/400'}" alt="Image">
-                </div>
-                <div class="carousel-content">
-                  <h3>${item.Title}</h3>
-                  <p>${item.Content}</p>
-                </div>
-              </div>
-            `;
-            $carousel.append(html);
-          });
-
-          startAutoRotate();
-        },
-        error: function (err) {
-          console.log("Error fetching carousel items", err);
-        }
-      });
-    }
-
-    function showSlide(index) {
-      const offset = -index * 100;
-      $carousel.css('transform', `translateX(${offset}%)`);
-    }
-
-    function nextSlide() {
-      currentIndex = (currentIndex + 1) % totalItems;
-      showSlide(currentIndex);
-    }
-
-    function prevSlide() {
-      currentIndex = (currentIndex - 1 + totalItems) % totalItems;
-      showSlide(currentIndex);
-    }
-
-    function startAutoRotate() {
-      interval = setInterval(nextSlide, 6000);
-    }
-
-    function resetAutoRotate() {
-      clearInterval(interval);
-      startAutoRotate();
-    }
-
-    $('.arrow-right').click(function () {
-      nextSlide();
-      resetAutoRotate();
-    });
-
-    $('.arrow-left').click(function () {
-      prevSlide();
-      resetAutoRotate();
-    });
-
-    fetchCarouselItems();
-  });
-</script>
+# Output folders not found
+if not_found_folders:
+    print("\nFolders not found:")
+    for folder in not_found_folders:
+        print(f"- {folder}")
+else:
+    print("\nAll files uploaded successfully.")
