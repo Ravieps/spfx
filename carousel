@@ -1,16 +1,3 @@
-<div id="customCarousel" class="carousel slide" data-ride="carousel" data-interval="3000">
-  <div class="carousel-inner" id="carouselItems">
-    <!-- Slides will be added here dynamically -->
-  </div>
-
-  <a class="carousel-control-prev" href="#customCarousel" role="button" data-slide="prev">
-    <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-  </a>
-  <a class="carousel-control-next" href="#customCarousel" role="button" data-slide="next">
-    <span class="carousel-control-next-icon" aria-hidden="true"></span>
-  </a>
-</div>
-
 <style>
   .carousel-item {
     display: flex;
@@ -18,17 +5,26 @@
     align-items: center;
     padding: 20px;
     background-color: #fff;
+    min-height: 300px;
   }
 
   .carousel-item img {
-    max-width: 300px;
-    max-height: 200px;
+    flex: 1;
+    max-width: 100%;
+    height: auto;
+    max-height: 250px;
+    object-fit: cover;
     margin-right: 20px;
-    object-fit: contain;
   }
 
   .carousel-text {
-    flex: 1;
+    flex: 2;
+    padding-left: 10px;
+  }
+
+  .carousel-text h4 {
+    font-weight: bold;
+    margin-bottom: 10px;
   }
 
   .carousel-control-prev-icon,
@@ -39,45 +35,19 @@
   }
 </style>
 
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script>
-$(document).ready(function() {
-  var listName = "ImageCarousel"; // Your SharePoint list name
-  var siteUrl = _spPageContextInfo.webAbsoluteUrl;
-  var restUrl = siteUrl + "/_api/web/lists/getbytitle('" + listName + "')/items?$orderby=ID asc";
-
-  $.ajax({
-    url: restUrl,
-    method: "GET",
-    headers: {
-      "Accept": "application/json; odata=verbose"
-    },
-    success: function(data) {
-      var items = data.d.results;
-      var html = "";
-
-      for (var i = 0; i < items.length; i++) {
-        var item = items[i];
-        var activeClass = i === 0 ? "active" : "";
-        var imageUrl = item.Image ? item.Image.Url : "";
-        var title = item.Title || "";
-        var description = item.Description || "";
-
-        html += `
-          <div class="carousel-item ${activeClass}">
-            <img src="${imageUrl}" alt="${title}">
-            <div class="carousel-text">
-              <h4>${title}</h4>
-              <p>${description}</p>
-            </div>
-          </div>`;
-      }
-
-      $('#carouselItems').html(html);
-    },
-    error: function(err) {
-      console.log("Error fetching SharePoint list data", err);
+<style>
+  @media (max-width: 768px) {
+    .carousel-item {
+      flex-direction: column;
+      text-align: center;
     }
-  });
-});
-</script>
+
+    .carousel-item img {
+      margin: 0 0 15px 0;
+    }
+
+    .carousel-text {
+      padding-left: 0;
+    }
+  }
+</style>
