@@ -1,53 +1,63 @@
 <style>
   .carousel-item {
     display: flex;
-    flex-direction: row;
+    flex-wrap: wrap;
     align-items: center;
+    justify-content: center;
     padding: 20px;
-    background-color: #fff;
     min-height: 300px;
   }
 
-  .carousel-item img {
-    flex: 1;
-    max-width: 100%;
+  .carousel-image {
+    flex: 0 0 40%;
+    max-width: 40%;
+    padding-right: 20px;
+  }
+
+  .carousel-image img {
+    width: 100%;
     height: auto;
-    max-height: 250px;
     object-fit: cover;
-    margin-right: 20px;
+    border-radius: 6px;
   }
 
   .carousel-text {
-    flex: 2;
-    padding-left: 10px;
+    flex: 0 0 60%;
+    max-width: 60%;
   }
 
   .carousel-text h4 {
-    font-weight: bold;
+    font-size: 20px;
     margin-bottom: 10px;
+    font-weight: bold;
   }
 
-  .carousel-control-prev-icon,
-  .carousel-control-next-icon {
-    background-color: rgba(0,0,0,0.5);
-    padding: 20px;
-    border-radius: 50%;
-  }
-</style>
-
-<style>
   @media (max-width: 768px) {
     .carousel-item {
       flex-direction: column;
       text-align: center;
     }
 
-    .carousel-item img {
-      margin: 0 0 15px 0;
+    .carousel-image,
+    .carousel-text {
+      max-width: 100%;
+      flex: 100%;
+      padding: 0;
     }
 
     .carousel-text {
-      padding-left: 0;
+      margin-top: 15px;
     }
   }
 </style>
+
+html += `
+  <div class="carousel-item ${activeClass}">
+    <div class="carousel-image">
+      <img src="${imageUrl}" alt="${title}">
+    </div>
+    <div class="carousel-text">
+      <h4>${title}</h4>
+      <p>${description}</p>
+    </div>
+  </div>`;
