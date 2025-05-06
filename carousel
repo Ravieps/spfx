@@ -1,0 +1,72 @@
+<div id="customCarousel" class="carousel slide" data-ride="carousel" data-interval="3000">
+  <div class="carousel-inner" id="carouselItems">
+    <!-- Dynamic items will be loaded here -->
+  </div>
+  
+  <!-- Left and Right Arrows -->
+  <a class="carousel-control-prev" href="#customCarousel" role="button" data-slide="prev">
+    <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+  </a>
+  <a class="carousel-control-next" href="#customCarousel" role="button" data-slide="next">
+    <span class="carousel-control-next-icon" aria-hidden="true"></span>
+  </a>
+</div>
+
+<style>
+  .carousel-item {
+    display: flex;
+    align-items: center;
+    padding: 15px;
+  }
+  .carousel-item img {
+    max-width: 300px;
+    margin-right: 20px;
+  }
+  .carousel-text {
+    max-width: 600px;
+  }
+</style>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+$(document).ready(function() {
+  var listName = "ImageCarousel"; // Change this to your actual list name
+  var siteUrl = _spPageContextInfo.webAbsoluteUrl;
+  var restUrl = siteUrl + "/_api/web/lists/getbytitle('" + listName + "')/items?$orderby=ID asc";
+
+  $.ajax({
+    url: restUrl,
+    method: "GET",
+    headers: {
+      "Accept": "application/json; odata=verbose"
+    },
+    success: function(data) {
+      var items = data.d.results;
+      var carouselHtml = '';
+      for (var i = 0; i < items.length; i++) {
+        var item = items[i];
+        var activeClass = i === 0 ? 'active' : '';
+        var imageUrl = item.Image ? item.Image.Url : '';
+        var title = item.Title || '';
+        var description = item.Description || '';
+
+        carouselHtml += `
+          <div class="carousel-item ${activeClass}">
+            <img src="${imageUrl}" alt="${title}">
+            <div class="carousel-text">
+              <h4>${title}</h4>
+              <p>${description}</p>
+            </div>
+          </div>`;
+      }
+      $('#carouselItems').html(carouselHtml);
+    },
+    error: function(err) {
+      console.log("Error fetching carousel data", err);
+    }
+  });
+});
+</script>
+
+
+
+  
