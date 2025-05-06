@@ -1,88 +1,42 @@
-<!-- Include Bootstrap (only once per page) -->
-<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-
-<div id="newsCarousel" class="carousel slide" data-ride="carousel" data-interval="3000">
-  <div class="carousel-inner" id="carousel-content">
-    <!-- Dynamic slides will go here -->
-  </div>
-
-  <!-- Controls -->
-  <a class="carousel-control-prev" href="#newsCarousel" role="button" data-slide="prev">
-    <span class="carousel-control-prev-icon bg-dark rounded-circle" aria-hidden="true"></span>
-  </a>
-  <a class="carousel-control-next" href="#newsCarousel" role="button" data-slide="next">
-    <span class="carousel-control-next-icon bg-dark rounded-circle" aria-hidden="true"></span>
-  </a>
-</div>
-
 <style>
   .carousel-item {
     display: flex;
     align-items: center;
     padding: 20px;
+    min-height: 300px; /* Set consistent height */
   }
+
+  .carousel-inner {
+    min-height: 300px; /* Ensure all items occupy the same vertical space */
+  }
+
   .carousel-image {
     flex: 0 0 40%;
     max-width: 40%;
     padding-right: 20px;
   }
+
   .carousel-image img {
     width: 100%;
     height: auto;
     border-radius: 8px;
   }
+
   .carousel-text {
     flex: 0 0 60%;
     max-width: 60%;
+    overflow-y: auto; /* Scroll if content overflows */
   }
-  .carousel-text h4 {
-    font-weight: bold;
-  }
+
   @media (max-width: 768px) {
     .carousel-item {
       flex-direction: column;
       text-align: center;
     }
+
     .carousel-image,
     .carousel-text {
       max-width: 100%;
     }
   }
 </style>
-
-<script>
-  $(document).ready(function () {
-    // Replace with your SharePoint list REST endpoint
-    var endpoint = "https://yoursharepointsite/_api/web/lists/getbytitle('News')/items?$select=Title,Description,ImageURL";
-
-    $.ajax({
-      url: endpoint,
-      method: "GET",
-      headers: {
-        "Accept": "application/json;odata=verbose"
-      },
-      success: function (data) {
-        var items = data.d.results;
-        var html = '';
-        $.each(items, function (i, item) {
-          html += `
-            <div class="carousel-item ${i === 0 ? 'active' : ''}">
-              <div class="carousel-image">
-                <img src="${item.ImageURL}" alt="${item.Title}">
-              </div>
-              <div class="carousel-text">
-                <h4>${item.Title}</h4>
-                <p>${item.Description}</p>
-              </div>
-            </div>`;
-        });
-        $('#carousel-content').html(html);
-      },
-      error: function (error) {
-        console.error("Error fetching data: ", error);
-      }
-    });
-  });
-</script>
