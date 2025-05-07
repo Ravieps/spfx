@@ -1,0 +1,38 @@
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+  $(document).ready(function () {
+    var fullText = `Your long text goes here. It can be multiple sentences or even paragraphs. 
+    The typing effect will simulate typing this entire message character by character. 
+    You can paste a full 200-word message here...`;
+
+    var index = 0;
+    var typingSpeed = 20; // lower = faster typing
+
+    function typeText() {
+      if (index < fullText.length) {
+        $('#typingBox').append(fullText.charAt(index));
+        index++;
+        setTimeout(typeText, typingSpeed);
+      }
+    }
+
+    typeText();
+  });
+</script>
+
+#typingBox {
+  font-family: monospace;
+  white-space: pre-wrap;
+  border-right: 2px solid black;
+  padding: 10px;
+}
+
+@keyframes blinkCursor {
+  0%, 100% { border-color: transparent; }
+  50% { border-color: black; }
+}
+
+#typingBox {
+  animation: blinkCursor 1s step-start infinite;
+}
+
