@@ -1,9 +1,7 @@
 import os
 from shareplum import Site
-from shareplum import Office365
 from shareplum.site import Version
 from requests_ntlm import HttpNtlmAuth
-from shareplum.errors import ShareplumRequestError
 
 # Configuration
 sharepoint_site = "http://your-sharepoint-site"
@@ -12,27 +10,29 @@ document_library = "Shared Documents"
 username = "DOMAIN\\your_username"
 password = "your_password"
 local_folder_path = "C:/path/to/excel/files"
-verify_ssl = False
+verify_ssl = False  # Disable SSL verification
 
-# Keywords to match in filenames/folders
+# Keywords to search for in file names and folder names
 keywords = ["data lineage", "metrics", "inventory", "summary"]
 
-# Authenticate with SharePoint 2016 using NTLM
+# Authenticate and connect to SharePoint
 auth = HttpNtlmAuth(username, password)
 site = Site(site_url, auth=auth, version=Version.v2016, verify_ssl=verify_ssl)
 
-# Get all folder names in the document library
+# Get folder object for the document library
 folder_obj = site.Folder(document_library)
+
 try:
-    subfolders = folder_obj.folders
-    available_folders = [f["Name"] for f in subfolders if not f["Name"].startswith("Forms")]
-except ShareplumRequestError as e:
+    subfolders = folder_obj.folders  # List of folder names (strings)
+    available_folders = [f for f in subfolders if not f.startswith("Forms")]
+except Exception as e:
     print(f"Error fetching folders: {e}")
     exit()
 
-# Process each Excel file in the local folder
+# Track files that could not be uploaded
 not_uploaded_files = []
 
+# Loop through local Excel files
 for file_name in os.listdir(local_folder_path):
     if not file_name.lower().endswith((".xlsx", ".xls")):
         continue
@@ -40,9 +40,10 @@ for file_name in os.listdir(local_folder_path):
     matched = False
     for keyword in keywords:
         if keyword.lower() in file_name.lower():
+            # Find folder(s) with this keyword
             matched_folders = [f for f in available_folders if keyword.lower() in f.lower()]
             if matched_folders:
-                matched_folder = matched_folders[0]  # Upload to first match
+                matched_folder = matched_folders[0]  # Upload to the first matched folder
                 file_path = os.path.join(local_folder_path, file_name)
 
                 try:
@@ -50,7 +51,7 @@ for file_name in os.listdir(local_folder_path):
                     with open(file_path, 'rb') as f:
                         file_content = f.read()
                         sp_folder.upload_file(file_content, file_name)
-                        print(f"Uploaded: {file_name} to folder: {matched_folder}")
+                        print(f"Uploaded: {file_name} → {matched_folder}")
                     matched = True
                     break
                 except Exception as e:
@@ -58,14 +59,14 @@ for file_name in os.listdir(local_folder_path):
                     matched = True
                     break
             else:
-                not_uploaded_files.append((file_name, f"Folder for keyword '{keyword}' not found"))
+                not_uploaded_files.append((file_name, f"No folder for keyword '{keyword}'"))
                 matched = True
                 break
 
     if not matched:
         not_uploaded_files.append((file_name, "No matching keyword"))
 
-# Output files that couldn't be uploaded
+# Final output of files not uploaded
 if not_uploaded_files:
     print("\nFiles NOT uploaded:")
     for fname, reason in not_uploaded_files:
