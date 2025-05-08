@@ -1,0 +1,74 @@
+import os
+from shareplum import Site
+from shareplum import Office365
+from shareplum.site import Version
+from requests_ntlm import HttpNtlmAuth
+from shareplum.errors import ShareplumRequestError
+
+# Configuration
+sharepoint_site = "http://your-sharepoint-site"
+site_url = f"{sharepoint_site}/sites/yoursite"
+document_library = "Shared Documents"
+username = "DOMAIN\\your_username"
+password = "your_password"
+local_folder_path = "C:/path/to/excel/files"
+verify_ssl = False
+
+# Keywords to match in filenames/folders
+keywords = ["data lineage", "metrics", "inventory", "summary"]
+
+# Authenticate with SharePoint 2016 using NTLM
+auth = HttpNtlmAuth(username, password)
+site = Site(site_url, auth=auth, version=Version.v2016, verify_ssl=verify_ssl)
+
+# Get all folder names in the document library
+folder_obj = site.Folder(document_library)
+try:
+    subfolders = folder_obj.folders
+    available_folders = [f["Name"] for f in subfolders if not f["Name"].startswith("Forms")]
+except ShareplumRequestError as e:
+    print(f"Error fetching folders: {e}")
+    exit()
+
+# Process each Excel file in the local folder
+not_uploaded_files = []
+
+for file_name in os.listdir(local_folder_path):
+    if not file_name.lower().endswith((".xlsx", ".xls")):
+        continue
+
+    matched = False
+    for keyword in keywords:
+        if keyword.lower() in file_name.lower():
+            matched_folders = [f for f in available_folders if keyword.lower() in f.lower()]
+            if matched_folders:
+                matched_folder = matched_folders[0]  # Upload to first match
+                file_path = os.path.join(local_folder_path, file_name)
+
+                try:
+                    sp_folder = site.Folder(f"{document_library}/{matched_folder}")
+                    with open(file_path, 'rb') as f:
+                        file_content = f.read()
+                        sp_folder.upload_file(file_content, file_name)
+                        print(f"Uploaded: {file_name} to folder: {matched_folder}")
+                    matched = True
+                    break
+                except Exception as e:
+                    print(f"Failed to upload {file_name} to {matched_folder}: {e}")
+                    matched = True
+                    break
+            else:
+                not_uploaded_files.append((file_name, f"Folder for keyword '{keyword}' not found"))
+                matched = True
+                break
+
+    if not matched:
+        not_uploaded_files.append((file_name, "No matching keyword"))
+
+# Output files that couldn't be uploaded
+if not_uploaded_files:
+    print("\nFiles NOT uploaded:")
+    for fname, reason in not_uploaded_files:
+        print(f"- {fname} (Reason: {reason})")
+else:
+    print("\nAll matching files uploaded successfully.")
