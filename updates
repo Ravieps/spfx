@@ -1,22 +1,45 @@
-for update in updates:
-    for key, val in update.items():
-        # Handle single user string
-        if isinstance(val, str) and val.startswith('#') and ';' in val:
-            try:
-                user_id = int(val.split(';')[0].replace('#', '').strip())
-                update[key] = [{'id': user_id}]
-            except Exception as e:
-                print(f"Failed to convert value for {key}: {val} => {e}")
-                update[key] = []
+import pandas as pd
 
-        # Handle list of user strings
-        elif isinstance(val, list) and all(isinstance(v, str) and v.startswith('#') for v in val):
-            try:
-                user_ids = []
-                for user in val:
-                    user_id = int(user.split(';')[0].replace('#', '').strip())
-                    user_ids.append({'id': user_id})
-                update[key] = user_ids
-            except Exception as e:
-                print(f"Failed to convert list for {key}: {val} => {e}")
-                update[key] = []
+def convert_user_fields_auto(updates):
+    """
+    Processes user fields and removes keys with NaN values.
+    Converts '#id;email' format into SharePlum-compatible [{'id': id}].
+    """
+    for update in updates:
+        keys_to_remove = []
+
+        for key, val in update.items():
+            # Remove key if value is NaN
+            if pd.isna(val):
+                keys_to_remove.append(key)
+                continue
+
+            # Handle list of user strings
+            if isinstance(val, list):
+                new_list = []
+                for item in val:
+                    if isinstance(item, str) and item.startswith('#') and ';' in item:
+                        try:
+                            user_id = int(item.split(';')[0].replace('#', '').strip())
+                            new_list.append({'id': user_id})
+                        except Exception as e:
+                            print(f"Error converting value for field '{key}' item '{item}': {e}")
+                if new_list:
+                    update[key] = new_list
+                else:
+                    keys_to_remove.append(key)
+
+            # Handle single user string
+            elif isinstance(val, str) and val.startswith('#') and ';' in val:
+                try:
+                    user_id = int(val.split(';')[0].replace('#', '').strip())
+                    update[key] = [{'id': user_id}]
+                except Exception as e:
+                    print(f"Error converting value for field '{key}': {val} - {e}")
+                    keys_to_remove.append(key)
+
+        # Remove NaN or invalid keys
+        for key in keys_to_remove:
+            update.pop(key, None)
+
+    return updates
