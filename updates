@@ -1,0 +1,52 @@
+from shareplum import Site
+from shareplum import Site
+from shareplum.site import Version
+from requests_ntlm import HttpNtlmAuth
+import pandas as pd
+import requests
+
+# Configuration
+USERNAME = 'domain\\username'       # NTLM Format
+PASSWORD = 'your_password'
+SHAREPOINT_SITE = 'http://yoursharepoint/sites/yoursite'
+DRAFT_LIST = 'Draft'
+ACTION_PLAN_LIST = 'ActionPlan'
+
+# Authenticate using NTLM
+session = requests.Session()
+session.auth = HttpNtlmAuth(USERNAME, PASSWORD)
+
+# Connect to site
+site = Site(SHAREPOINT_SITE, version=Version.v2016, auth=session)
+
+# Access Draft and ActionPlan lists
+draft = site.List(DRAFT_LIST)
+action = site.List(ACTION_PLAN_LIST)
+
+# Step 1: Get Draft items where IssueDeleted == "Yes"
+draft_items = draft.GetListItems(fields=["ID", "RecordID", "AssignedToId", "CreatedById", "IssueDeleted"])
+draft_df = pd.DataFrame(draft_items)
+draft_df = draft_df[draft_df["IssueDeleted"] == "Yes"]
+
+# Step 2: Get ActionPlan list to match on RecordID
+action_items = action.GetListItems(fields=["ID", "RecordID"])
+action_df = pd.DataFrame(action_items)
+
+# Step 3: Match on RecordID
+merged = pd.merge(draft_df, action_df, on="RecordID", suffixes=('_draft', '_action'))
+
+# Step 4: Prepare updates for ActionPlan
+updates = []
+for _, row in merged.iterrows():
+    updates.append({
+        'ID': row['ID_action'],                     # ActionPlan Item ID
+        'AssignedToId': row['AssignedToId'],        # From Draft
+        'CreatedById': row['CreatedById']
+    })
+
+# Step 5: Update ActionPlan list items
+for update_item in updates:
+    action.UpdateListItems(data=[update_item], kind='Update')
+    print(f"Updated ActionPlan ID: {update_item['ID']}")
+
+print("All updates completed.")
