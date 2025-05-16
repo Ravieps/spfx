@@ -1,0 +1,181 @@
+<div class="carousel-container">
+  <div class="carousel-slides" id="carouselSlides">
+    <!-- Slides will be dynamically added here -->
+  </div>
+  <div class="carousel-arrow left">←</div>
+  <div class="carousel-arrow right">→</div>
+</div>
+
+<script type="text/javascript" src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+  // JavaScript remains largely the same, but we'll adjust the slide generation
+  $(document).ready(function () {
+    const siteUrl = "https://example.com";
+    const webApiUrl = siteUrl + "/_api/web/lists/getbytitle('carousel')/items?$orderby=Order";
+    const listName = "carousel";
+    let currentIndex = 0;
+    let totalSlides = 0;
+    let autoSlideInterval;
+
+    function loadCarouselItems() {
+      $.ajax({
+        url: webApiUrl,
+        method: "GET",
+        headers: { "Accept": "application/json;odata=verbose" },
+        success: function (data) {
+          const items = data.d.results;
+          totalSlides = items.length;
+          items.forEach((item) => {
+            const slide = `
+              <div class="carousel-slide">
+                <div class="slide-content">
+                  <div class="slide-image">
+                    <img src="${item.ImageUrl}" alt="${item.Title}">
+                  </div>
+                  <div class="slide-text">
+                    <h3>${item.Title}</h3>
+                    <p>${item.Description}</p>
+                  </div>
+                </div>
+              </div>`;
+            $("#carouselSlides").append(slide);
+          });
+          startAutoSlide();
+        },
+        error: function (err) {
+          console.error("Error loading carousel items:", err);
+        },
+      });
+    }
+
+    function showSlide(index) {
+      const offset = -index * 100;
+      $("#carouselSlides").css("transform", `translateX(${offset}%)`);
+    }
+
+    function startAutoSlide() {
+      autoSlideInterval = setInterval(() => {
+        currentIndex = (currentIndex + 1) % totalSlides;
+        showSlide(currentIndex);
+      }, 10000);
+    }
+
+    function goToSlide(index) {
+      clearInterval(autoSlideInterval);
+      currentIndex = (index + totalSlides) % totalSlides;
+      showSlide(currentIndex);
+      startAutoSlide();
+    }
+
+    $(".carousel-arrow.left").click(() => goToSlide(currentIndex - 1));
+    $(".carousel-arrow.right").click(() => goToSlide(currentIndex + 1));
+
+    loadCarouselItems();
+  });
+</script>
+
+
+.carousel-container {
+  position: relative;
+  width: 100%;
+  max-width: 1200px; /* Set a max-width for larger screens */
+  margin: 0 auto; /* Center the carousel */
+  overflow: hidden;
+}
+
+.carousel-slides {
+  display: flex;
+  transition: transform 0.5s ease-in-out;
+  width: 100%;
+}
+
+.carousel-slide {
+  min-width: 100%;
+  box-sizing: border-box;
+  padding: 20px;
+  background-color: #f8f8f8;
+  border-radius: 10px;
+}
+
+/* New layout for slide content */
+.slide-content {
+  display: flex;
+  flex-wrap: wrap; /* Allow wrapping on smaller screens */
+  gap: 20px; /* Space between image and text */
+  align-items: center; /* Vertically center content */
+}
+
+.slide-image,
+.slide-text {
+  flex: 1; /* Equal width for image and text */
+  min-width: 300px; /* Minimum width to prevent squashing on small screens */
+}
+
+.slide-image img {
+  width: 100%; /* Make image responsive */
+  height: auto; /* Maintain aspect ratio */
+  max-height: 300px; /* Limit height */
+  object-fit: cover; /* Ensure image scales properly */
+  border-radius: 8px; /* Optional: round image corners */
+}
+
+.slide-text h3 {
+  font-size: clamp(16px, 2vw, 20px); /* Responsive font size */
+  margin: 0 0 10px 0; /* Remove negative margin, add bottom margin */
+  color: #0078d7;
+}
+
+.slide-text p {
+  font-size: clamp(14px, 1.5vw, 16px); /* Responsive font size */
+  margin: 0;
+  overflow-wrap: break-word; /* Prevent overflow */
+}
+
+.carousel-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background-color: rgba(0, 0, 0, 0.3);
+  color: white;
+  padding: 10px;
+  cursor: pointer;
+  font-size: 18px;
+  z-index: 1;
+  border-radius: 50%;
+  user-select: none;
+}
+
+.carousel-arrow.left {
+  left: 10px;
+}
+
+.carousel-arrow.right {
+  right: 10px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .carousel-slide {
+    padding: 10px; /* Reduce padding on smaller screens */
+  }
+
+  .slide-content {
+    flex-direction: column; /* Stack image and text on small screens */
+    align-items: stretch;
+  }
+
+  .slide-image,
+  .slide-text {
+    min-width: 100%; /* Full width on small screens */
+  }
+
+  .slide-image img {
+    max-height: 200px; /* Reduce image height on smaller screens */
+  }
+
+  .carousel-arrow {
+    font-size: 14px; /* Smaller arrows on mobile */
+    padding: 8px;
+  }
+}
+
