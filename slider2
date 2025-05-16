@@ -1,0 +1,224 @@
+<style>
+  .slider-container {
+    width: 100%;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .slider-wrapper {
+    display: flex;
+    transition: transform 0.5s ease-in-out;
+  }
+
+  .slider-item {
+    flex-shrink: 0;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    box-sizing: border-box;
+  }
+
+  /* Article Layout */
+  .article-layout .slider-image {
+    width: 40%;
+    padding: 20px;
+  }
+
+  .article-layout .slider-content {
+    width: 60%;
+    padding: 20px;
+  }
+
+  .slider-image img {
+    width: 100%;
+    height: auto;
+    object-fit: cover;
+  }
+
+  .slider-heading {
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 10px;
+  }
+
+  .slider-text {
+    font-size: 16px;
+    line-height: 1.5;
+  }
+
+  /* Testimonial Layout */
+  .testimonial-card {
+    margin: 0 auto;
+    text-align: center;
+    padding: 40px;
+    max-width: 600px;
+  }
+
+  .testimonial-card img {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-bottom: 15px;
+  }
+
+  .testimonial-title {
+    font-size: 20px;
+    font-weight: bold;
+    margin-bottom: 8px;
+  }
+
+  .testimonial-author {
+    font-style: italic;
+    color: #555;
+    margin-bottom: 12px;
+  }
+
+  .testimonial-content {
+    font-size: 16px;
+  }
+
+  .slider-arrow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(0,0,0,0.5);
+    color: #fff;
+    border: none;
+    padding: 10px;
+    cursor: pointer;
+    z-index: 10;
+  }
+
+  .slider-arrow.left {
+    left: 10px;
+  }
+
+  .slider-arrow.right {
+    right: 10px;
+  }
+
+  @media (max-width: 768px) {
+    .slider-item {
+      flex-direction: column;
+    }
+
+    .article-layout .slider-image,
+    .article-layout .slider-content {
+      width: 100%;
+    }
+  }
+</style>
+
+<div class="slider-container">
+  <button class="slider-arrow left">&#10094;</button>
+  <div class="slider-wrapper" id="sliderWrapper"></div>
+  <button class="slider-arrow right">&#10095;</button>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+  var currentIndex = 0;
+  var sliderData = [];
+
+  function renderSlider() {
+    const wrapper = $('#sliderWrapper');
+    wrapper.empty();
+
+    sliderData.forEach(item => {
+      let slide = '';
+
+      if (item.Category.toLowerCase() === "article") {
+        slide = `
+          <div class="slider-item article-layout">
+            <div class="slider-image">
+              <img src="${item.ImageUrl}" alt="Article Image">
+            </div>
+            <div class="slider-content">
+              <div class="slider-heading">${item.Title}</div>
+              <div class="slider-text">${item.Description}</div>
+            </div>
+          </div>
+        `;
+      } else if (item.Category.toLowerCase() === "testimonial") {
+        slide = `
+          <div class="slider-item">
+            <div class="testimonial-card">
+              <img src="${item.ImageUrl}" alt="Person">
+              <div class="testimonial-title">${item.Title}</div>
+              <div class="testimonial-author">${item.Author}</div>
+              <div class="testimonial-content">${item.Description}</div>
+            </div>
+          </div>
+        `;
+      }
+
+      wrapper.append(slide);
+    });
+
+    $('#sliderWrapper').css('width', `${sliderData.length * 100}%`);
+    $('.slider-item').css('width', `${100 / sliderData.length}%`);
+    showSlide(currentIndex);
+  }
+
+  function showSlide(index) {
+    const offset = -index * 100;
+    $('#sliderWrapper').css('transform', `translateX(${offset}%)`);
+  }
+
+  function nextSlide() {
+    currentIndex = (currentIndex + 1) % sliderData.length;
+    showSlide(currentIndex);
+  }
+
+  function prevSlide() {
+    currentIndex = (currentIndex - 1 + sliderData.length) % sliderData.length;
+    showSlide(currentIndex);
+  }
+
+  function startAutoSlide() {
+    setInterval(nextSlide, 5000);
+  }
+
+  function loadSliderDataFromSharePoint() {
+    var siteUrl = _spPageContextInfo.webAbsoluteUrl;
+    var listName = "YourListName"; // Change this
+
+    $.ajax({
+      url: siteUrl + "/_api/web/lists/getbytitle('" + listName + "')/items?$orderby=Created desc",
+      method: "GET",
+      headers: {
+        "Accept": "application/json; odata=verbose"
+      },
+      success: function(data) {
+        sliderData = data.d.results.map(item => ({
+          Title: item.Title,
+          Description: item.Description0 || "", // Internal name of the content field
+          Category: item.Category || "", // Internal name of Category column
+          ImageUrl: item.Image ? item.Image.Url : "https://via.placeholder.com/300", // Fallback
+          Author: item.Author0 || "" // Internal name of author for testimonials
+        }));
+
+        if (sliderData.length > 0) {
+          renderSlider();
+          startAutoSlide();
+        }
+      },
+      error: function(error) {
+        console.error("Error fetching data: ", error);
+      }
+    });
+  }
+
+  $(document).ready(function() {
+    loadSliderDataFromSharePoint();
+
+    $('.slider-arrow.left').click(function() {
+      prevSlide();
+    });
+
+    $('.slider-arrow.right').click(function() {
+      nextSlide();
+    });
+  });
+</script>
