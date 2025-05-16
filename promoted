@@ -1,0 +1,95 @@
+<style>
+  .promoted-links-container {
+    max-width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 20px;
+    padding: 20px;
+    box-sizing: border-box;
+    background-color: #f4f4f4;
+  }
+
+  .promoted-tile {
+    flex: 1 1 200px;
+    max-width: 250px;
+    background-color: #ffffff;
+    text-align: center;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    transition: transform 0.2s;
+    cursor: pointer;
+  }
+
+  .promoted-tile:hover {
+    transform: scale(1.05);
+  }
+
+  .promoted-tile img {
+    width: 100%;
+    height: 150px;
+    object-fit: cover;
+  }
+
+  .promoted-tile-title {
+    padding: 15px;
+    font-size: 18px;
+    font-weight: bold;
+    color: #0078d7;
+    background-color: #fff;
+  }
+
+  @media (max-width: 600px) {
+    .promoted-tile img {
+      height: 120px;
+    }
+
+    .promoted-tile-title {
+      font-size: 16px;
+    }
+  }
+</style>
+
+<div class="promoted-links-container" id="promotedLinks">
+  <!-- Tiles will be inserted here via JavaScript -->
+</div>
+
+<script>
+  const linksData = [
+    {
+      title: "HR Portal",
+      imageUrl: "https://via.placeholder.com/250x150?text=HR+Portal",
+      link: "https://intranet.company.com/hr"
+    },
+    {
+      title: "IT Helpdesk",
+      imageUrl: "https://via.placeholder.com/250x150?text=IT+Helpdesk",
+      link: "https://intranet.company.com/it"
+    },
+    {
+      title: "Policies",
+      imageUrl: "https://via.placeholder.com/250x150?text=Policies",
+      link: "https://intranet.company.com/policies"
+    },
+    {
+      title: "Employee Directory",
+      imageUrl: "https://via.placeholder.com/250x150?text=Directory",
+      link: "https://intranet.company.com/directory"
+    }
+  ];
+
+  const container = document.getElementById("promotedLinks");
+
+  linksData.forEach(tile => {
+    const tileDiv = document.createElement("div");
+    tileDiv.className = "promoted-tile";
+    tileDiv.innerHTML = `
+      <a href="${tile.link}" target="_blank" style="text-decoration: none;">
+        <img src="${tile.imageUrl}" alt="${tile.title}">
+        <div class="promoted-tile-title">${tile.title}</div>
+      </a>
+    `;
+    container.appendChild(tileDiv);
+  });
+</script>
