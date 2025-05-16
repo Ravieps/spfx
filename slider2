@@ -111,9 +111,9 @@
 </style>
 
 <div class="slider-container">
-  <button class="slider-arrow left">&#10094;</button>
+  <button type="button" class="slider-arrow left">&#10094;</button>
   <div class="slider-wrapper" id="sliderWrapper"></div>
-  <button class="slider-arrow right">&#10095;</button>
+  <button type="button" class="slider-arrow right">&#10095;</button>
 </div>
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -157,7 +157,7 @@
     });
 
     $('#sliderWrapper').css('width', `${sliderData.length * 100}%`);
-    $('.slider-item').css('width', `${100 / sliderData.length}%`);
+    $('.slider-item').css('width', `${100}%`);
     showSlide(currentIndex);
   }
 
@@ -182,7 +182,7 @@
 
   function loadSliderDataFromSharePoint() {
     var siteUrl = _spPageContextInfo.webAbsoluteUrl;
-    var listName = "YourListName"; // Change this
+    var listName = "YourListName"; // Change this to your actual list name
 
     $.ajax({
       url: siteUrl + "/_api/web/lists/getbytitle('" + listName + "')/items?$orderby=Created desc",
@@ -193,10 +193,10 @@
       success: function(data) {
         sliderData = data.d.results.map(item => ({
           Title: item.Title,
-          Description: item.Description0 || "", // Internal name of the content field
-          Category: item.Category || "", // Internal name of Category column
-          ImageUrl: item.Image ? item.Image.Url : "https://via.placeholder.com/300", // Fallback
-          Author: item.Author0 || "" // Internal name of author for testimonials
+          Description: item.Description0 || "", // Adjust internal name
+          Category: item.Category || "", // Adjust internal name
+          ImageUrl: item.Image ? item.Image.Url : "https://via.placeholder.com/300",
+          Author: item.Author0 || "" // Adjust internal name
         }));
 
         if (sliderData.length > 0) {
@@ -213,11 +213,13 @@
   $(document).ready(function() {
     loadSliderDataFromSharePoint();
 
-    $('.slider-arrow.left').click(function() {
+    $('.slider-arrow.left').on('click', function(e) {
+      e.preventDefault();
       prevSlide();
     });
 
-    $('.slider-arrow.right').click(function() {
+    $('.slider-arrow.right').on('click', function(e) {
+      e.preventDefault();
       nextSlide();
     });
   });
