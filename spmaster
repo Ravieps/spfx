@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>Custom Master Page</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <style>
+        /* Reset and layout styles */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #fff;
+        }
+
+        /* Header styles */
+        .custom-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background-color: #f3f3f3;
+            padding: 10px 20px;
+            border-bottom: 1px solid #ccc;
+        }
+
+        .custom-header img {
+            height: 50px;
+            width: auto;
+        }
+
+        .marquee-wrapper {
+            flex: 1;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            height: 50px;
+            margin: 0 20px;
+        }
+
+        .marquee-static {
+            font-style: italic;
+            font-size: 16px;
+            display: block;
+        }
+
+        .marquee-dynamic {
+            animation: slideUp 6s linear infinite;
+            position: absolute;
+            top: 25px;
+            width: 100%;
+        }
+
+        .marquee-line {
+            height: 25px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        @keyframes slideUp {
+            0% { transform: translateY(0); }
+            33% { transform: translateY(-25px); }
+            66% { transform: translateY(-50px); }
+            100% { transform: translateY(0); }
+        }
+
+        /* Layout structure */
+        .layout-wrapper {
+            display: flex;
+            flex-direction: row;
+        }
+
+        .left-nav {
+            width: 220px;
+            padding: 10px;
+        }
+
+        .main-content {
+            flex: 1;
+            padding: 10px;
+        }
+
+        /* Footer */
+        .custom-footer {
+            background-color: #f3f3f3;
+            padding: 10px;
+            text-align: center;
+            border-top: 1px solid #ccc;
+        }
+
+        /* Responsive tweaks */
+        @media (max-width: 768px) {
+            .custom-header {
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+            }
+
+            .layout-wrapper {
+                flex-direction: column;
+            }
+
+            .left-nav {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- SharePoint Suite Bar & Global Navigation -->
+    <asp:ContentPlaceHolder id="PlaceHolderGlobalNavigation" runat="server" />
+    <asp:ContentPlaceHolder id="PlaceHolderTitleAreaClass" runat="server" />
+
+    <!-- Custom Header -->
+    <div class="custom-header">
+        <img src="/sites/yoursite/SiteAssets/logo-left.png" alt="Left Logo" />
+
+        <div class="marquee-wrapper">
+            <span class="marquee-static">Ready to</span>
+            <div class="marquee-dynamic">
+                <div class="marquee-line">Streamline</div>
+                <div class="marquee-line">Innovate</div>
+                <div class="marquee-line">Build</div>
+            </div>
+        </div>
+
+        <img src="/sites/yoursite/SiteAssets/logo-right.png" alt="Right Logo" />
+    </div>
+
+    <!-- Ribbon + Top Navigation -->
+    <asp:ContentPlaceHolder id="PlaceHolderPageTitle" runat="server" />
+    <asp:ContentPlaceHolder id="PlaceHolderPageImage" runat="server" />
+    <asp:ContentPlaceHolder id="PlaceHolderPageDescription" runat="server" />
+    <asp:ContentPlaceHolder id="PlaceHolderTopNavBar" runat="server" />
+    <asp:ContentPlaceHolder id="PlaceHolderSearchArea" runat="server" />
+
+    <!-- Main Layout -->
+    <div class="layout-wrapper">
+        <!-- Left Nav -->
+        <div class="left-nav">
+            <asp:ContentPlaceHolder id="PlaceHolderLeftNavBar" runat="server" />
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="main-content">
+            <asp:ContentPlaceHolder id="PlaceHolderMain" runat="server" />
+        </div>
+    </div>
+
+    <!-- SharePoint hidden placeholders -->
+    <asp:ContentPlaceHolder id="PlaceHolderFormDigest" runat="server" />
+    <asp:ContentPlaceHolder id="PlaceHolderAdditionalPageHead" runat="server" />
+    <asp:ContentPlaceHolder id="PlaceHolderPageTitleInTitleArea" runat="server" />
+    <asp:ContentPlaceHolder id="PlaceHolderSiteName" runat="server" />
+
+    <!-- Footer -->
+    <div class="custom-footer">
+        © 2025 Your Company. All rights reserved.
+    </div>
+
+</body>
+</html>
