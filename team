@@ -1,0 +1,111 @@
+<style>
+    .team-section {
+        margin-bottom: 40px;
+    }
+    .team-title {
+        font-size: 28px;
+        font-weight: bold;
+        margin-bottom: 20px;
+        border-bottom: 2px solid #0078d4;
+        padding-bottom: 5px;
+    }
+    .team-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 20px;
+    }
+    .team-card {
+        width: 220px;
+        border: 1px solid #ccc;
+        border-radius: 10px;
+        padding: 15px;
+        text-align: center;
+        background: #f9f9f9;
+        transition: box-shadow 0.3s ease;
+    }
+    .team-card:hover {
+        box-shadow: 0 0 10px rgba(0,0,0,0.2);
+    }
+    .team-card img {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        object-fit: cover;
+        margin-bottom: 10px;
+    }
+    .team-name {
+        font-weight: bold;
+        font-size: 16px;
+    }
+    .team-title-position {
+        font-size: 14px;
+        color: #666;
+    }
+    .team-bio {
+        font-size: 13px;
+        margin-top: 8px;
+        color: #444;
+    }
+</style>
+
+<div id="team-executive" class="team-section">
+    <div class="team-title">Executive</div>
+    <div class="team-container" id="executive-container"></div>
+</div>
+
+<div id="team-leadership" class="team-section">
+    <div class="team-title">Leadership Team</div>
+    <div class="team-container" id="leadership-container"></div>
+</div>
+
+<div id="team-members" class="team-section">
+    <div class="team-title">Team</div>
+    <div class="team-container" id="team-container"></div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+$(document).ready(function () {
+    var siteUrl = _spPageContextInfo.webAbsoluteUrl;
+    var listName = "TeamList"; // Change this to your list's name
+
+    $.ajax({
+        url: siteUrl + "/_api/web/lists/getbytitle('" + listName + "')/items?$orderby=Order asc",
+        method: "GET",
+        headers: {
+            "Accept": "application/json;odata=verbose"
+        },
+        success: function (data) {
+            var items = data.d.results;
+
+            items.forEach(function (item) {
+                var name = item.Title || "";
+                var title = item.Designation || "";
+                var bio = item.Bio || "";
+                var category = item.Category || "Team";
+                var picture = item.PictureURL ? item.PictureURL.Url : "https://via.placeholder.com/100";
+
+                var cardHtml = `
+                    <div class="team-card">
+                        <img src="${picture}" alt="${name}">
+                        <div class="team-name">${name}</div>
+                        <div class="team-title-position">${title}</div>
+                        <div class="team-bio">${bio}</div>
+                    </div>
+                `;
+
+                if (category === "Executive") {
+                    $("#executive-container").append(cardHtml);
+                } else if (category === "Leadership Team") {
+                    $("#leadership-container").append(cardHtml);
+                } else {
+                    $("#team-container").append(cardHtml);
+                }
+            });
+        },
+        error: function (err) {
+            console.error("Error retrieving team data: ", err);
+        }
+    });
+});
+</script>
