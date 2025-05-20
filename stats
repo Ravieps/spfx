@@ -1,0 +1,160 @@
+<!-- COUNTER SECTION OVER IMAGE -->
+<div class="counter-section">
+  <img src="https://via.placeholder.com/1200x400" alt="Background" class="counter-bg" />
+  <div class="counter-overlay">
+    <!-- 🕒 AS OF DATE -->
+    <div class="as-of-date" id="asOfDate"></div>
+
+    <!-- COUNTERS -->
+    <div class="counter-box">
+      <div class="counter" data-title="Projects">0</div>
+      <div class="label">Projects</div>
+    </div>
+    <div class="counter-box">
+      <div class="counter" data-title="Clients">0</div>
+      <div class="label">Clients</div>
+    </div>
+    <div class="counter-box">
+      <div class="counter" data-title="Employees">0</div>
+      <div class="label">Employees</div>
+    </div>
+  </div>
+</div>
+
+<!-- STYLE: Responsive, mobile-friendly, with As of date -->
+<style>
+  .counter-section {
+    position: relative;
+    text-align: center;
+    color: white;
+  }
+
+  .counter-bg {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  .counter-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 60px;
+    flex-wrap: wrap;
+    background: rgba(0, 0, 0, 0.4);
+    flex-direction: row;
+  }
+
+  .counter-box {
+    text-align: center;
+    min-width: 100px;
+    flex: 1 1 150px;
+  }
+
+  .counter {
+    font-size: 48px;
+    font-weight: bold;
+  }
+
+  .label {
+    font-size: 18px;
+    margin-top: 10px;
+  }
+
+  .as-of-date {
+    position: absolute;
+    top: 10px;
+    right: 20px;
+    font-size: 14px;
+    color: #ffffff;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-style: italic;
+  }
+
+  /* Mobile responsiveness */
+  @media screen and (max-width: 600px) {
+    .counter-overlay {
+      flex-direction: column;
+      gap: 30px;
+    }
+
+    .counter {
+      font-size: 36px;
+    }
+
+    .label {
+      font-size: 16px;
+    }
+
+    .as-of-date {
+      font-size: 12px;
+      top: 5px;
+      right: 10px;
+    }
+  }
+</style>
+
+<!-- SCRIPT: jQuery + REST + Counter Animation + As-of Date -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+  $(document).ready(function () {
+    // 🕒 Set current date
+    var today = new Date();
+    var formattedDate = today.toLocaleDateString(undefined, {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+    $('#asOfDate').text('As of ' + formattedDate);
+
+    // 📦 Fetch live counts from SharePoint list
+    $.ajax({
+      url: _spPageContextInfo.webAbsoluteUrl + "/_api/web/lists/getbytitle('Stats')/items?$select=Title,Count",
+      method: "GET",
+      headers: {
+        "Accept": "application/json; odata=verbose"
+      },
+      success: function (data) {
+        var items = data.d.results;
+        items.forEach(function (item) {
+          $('.counter[data-title="' + item.Title + '"]').attr('data-count', item.Count);
+        });
+        animateCounters();
+      },
+      error: function (err) {
+        console.error("REST API error:", err);
+      }
+    });
+
+    // 🔢 Animate counters
+    function animateCounters() {
+      $('.counter').each(function () {
+        var $this = $(this),
+          countTo = $this.attr('data-count');
+        $({ countNum: $this.text() }).animate(
+          {
+            countNum: countTo
+          },
+          {
+            duration: 2000,
+            easing: 'swing',
+            step: function () {
+              $this.text(Math.floor(this.countNum));
+            },
+            complete: function () {
+              $this.text(this.countNum);
+            }
+          }
+        );
+      });
+    }
+  });
+</script>
