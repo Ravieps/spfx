@@ -1,1 +1,251 @@
 
+<style>
+  .custom-slider-container {
+    display: flex;
+    flex-wrap: wrap;
+    width: 100%;
+    font-family: Arial, sans-serif;
+    box-sizing: border-box;
+  }
+
+  .left-slider {
+    flex: 1 1 75%;
+    position: relative;
+    overflow: hidden;
+    padding: 10px;
+    box-sizing: border-box;
+  }
+
+  .slide {
+    display: none;
+    text-align: center;
+    transition: all 0.5s ease-in-out;
+  }
+
+  .slide.active {
+    display: block;
+  }
+
+  .slide img {
+    width: 120px;
+    height: 120px;
+    object-fit: cover;
+    border-radius: 50%;
+    margin: 10px auto;
+  }
+
+  .slide .content {
+    padding: 10px;
+    font-size: 16px;
+    color: #333;
+  }
+
+  .slide .title {
+    font-weight: bold;
+    font-size: 18px;
+  }
+
+  .slider-buttons {
+    position: absolute;
+    top: 50%;
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    transform: translateY(-50%);
+    padding: 0 10px;
+    box-sizing: border-box;
+  }
+
+  .slider-buttons button {
+    background-color: #0078d4;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 16px;
+  }
+
+  .right-section {
+    flex: 1 1 25%;
+    text-align: center;
+    padding: 20px;
+    border-left: 1px solid #ddd;
+    box-sizing: border-box;
+  }
+
+  .bulb-icon {
+    font-size: 48px;
+    color: #ffc107;
+  }
+
+  .glow {
+    animation: glow 1s infinite alternate;
+  }
+
+  @keyframes glow {
+    from { text-shadow: 0 0 5px #ff0; }
+    to { text-shadow: 0 0 20px #ff0, 0 0 30px #ff0; }
+  }
+
+  .submit-button {
+    background-color: #28a745;
+    border: none;
+    color: white;
+    padding: 10px 20px;
+    margin-top: 10px;
+    font-size: 16px;
+    cursor: pointer;
+  }
+
+  .submit-text {
+    margin-top: 10px;
+    font-size: 14px;
+    color: #555;
+  }
+
+  .read-more {
+    display: inline-block;
+    margin-top: 10px;
+    font-size: 14px;
+    color: #0078d4;
+    text-decoration: underline;
+  }
+
+  /* Mobile & Tablet Responsiveness */
+  @media (max-width: 768px) {
+    .custom-slider-container {
+      flex-direction: column;
+    }
+
+    .left-slider,
+    .right-section {
+      flex: 1 1 100%;
+      padding: 10px;
+    }
+
+    .slide img {
+      width: 100px;
+      height: 100px;
+    }
+
+    .slider-buttons {
+      top: 90%;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .slide .content {
+      font-size: 14px;
+    }
+
+    .slider-buttons button {
+      font-size: 14px;
+      padding: 6px 10px;
+    }
+
+    .submit-button {
+      font-size: 14px;
+    }
+
+    .bulb-icon {
+      font-size: 40px;
+    }
+  }
+</style>
+
+<div class="custom-slider-container">
+  <div class="left-slider" id="sliderContainer">
+    <!-- Slides will be injected here -->
+    <div class="slider-buttons">
+      <button onclick="prevSlide()">❮</button>
+      <button onclick="nextSlide()">❯</button>
+    </div>
+  </div>
+  <div class="right-section">
+    <div id="bulbIcon" class="bulb-icon glow">💡</div>
+    <button class="submit-button">Submit Idea</button>
+    <div class="submit-text">
+      Share your innovative thoughts with us and make a difference!
+    </div>
+  </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+  let currentSlide = 0;
+  let slides = [];
+
+  function renderSlides(data) {
+    const container = $('#sliderContainer');
+    data.forEach((item, index) => {
+      let slideHtml = `
+        <div class="slide ${index === 0 ? 'active' : ''}">
+          <img src="${item.ImageURL}" alt="${item.Title}" />
+          <div class="content">
+            <div class="title">${item.Title}</div>`;
+      if (item.Category === 'Testimonial') {
+        slideHtml += `<div><strong>${item.Designation}</strong><br>${item.Comment}</div>`;
+      } else {
+        slideHtml += `<div>${item.Content}</div>
+                      <a class="read-more" href="${item.ArticleLink}" target="_blank">Read More</a>`;
+      }
+      slideHtml += `</div></div>`;
+      container.prepend(slideHtml);
+    });
+    slides = $('.slide');
+  }
+
+  function nextSlide() {
+    slides.eq(currentSlide).removeClass('active');
+    currentSlide = (currentSlide + 1) % slides.length;
+    slides.eq(currentSlide).addClass('active');
+  }
+
+  function prevSlide() {
+    slides.eq(currentSlide).removeClass('active');
+    currentSlide = (currentSlide - 1 + slides.length) % slides.length;
+    slides.eq(currentSlide).addClass('active');
+  }
+
+  function startSlider() {
+    setInterval(() => {
+      nextSlide();
+    }, 5000); // Auto slide every 5 seconds
+  }
+
+  function getListItems() {
+    const siteUrl = _spPageContextInfo.webAbsoluteUrl;
+    const listName = "YourListName"; // Replace with your SharePoint list name
+
+    $.ajax({
+      url: `${siteUrl}/_api/web/lists/getbytitle('${listName}')/items?$select=Title,Category,ImageURL,Content,Designation,Comment,ArticleLink`,
+      method: "GET",
+      headers: { "Accept": "application/json;odata=verbose" },
+      success: function(data) {
+        const items = data.d.results.map(item => ({
+          Title: item.Title,
+          Category: item.Category,
+          ImageURL: item.ImageURL,
+          Content: item.Content,
+          Designation: item.Designation,
+          Comment: item.Comment,
+          ArticleLink: item.ArticleLink
+        }));
+        renderSlides(items);
+        startSlider();
+      },
+      error: function(error) {
+        console.error("Error fetching list items", error);
+      }
+    });
+  }
+
+  $(document).ready(function() {
+    getListItems();
+
+    // Stop glowing after 4 seconds
+    setTimeout(() => {
+      $('#bulbIcon').removeClass('glow');
+    }, 4000);
+  });
+</script>
