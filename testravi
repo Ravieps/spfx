@@ -1,0 +1,285 @@
+<style>
+  .custom-slider-container {
+    display: flex;
+    flex-wrap: wrap;
+    width: 100%;
+    font-family: Arial, sans-serif;
+    box-sizing: border-box;
+  }
+
+  .left-slider {
+    flex: 1 1 75%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 10px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .slide {
+    display: none;
+    transition: all 0.5s ease-in-out;
+  }
+
+  .slide.active {
+    display: block;
+  }
+
+  .slide.article img {
+    width: 100%;
+    height: auto;
+    object-fit: cover;
+    border-radius: 6px;
+    display: block;
+    margin: 0 auto;
+  }
+
+  .slide.testimonial img {
+    width: 100px;
+    height: 100px;
+    object-fit: cover;
+    border-radius: 50%;
+    display: block;
+    margin: 0 auto 10px;
+  }
+
+  .slide .content {
+    padding: 10px;
+    font-size: 16px;
+    color: #333;
+    text-align: center;
+  }
+
+  .slide .title {
+    font-weight: bold;
+    font-size: 18px;
+    margin: 10px 0 5px;
+  }
+
+  .slide .title a {
+    text-decoration: none;
+    color: #333;
+  }
+
+  .slide.testimonial {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    background-color: #f9f9f9;
+    padding: 15px;
+    margin: 10px auto;
+    max-width: 600px;
+  }
+
+  .read-more {
+    display: inline-block;
+    margin-top: 10px;
+    font-size: 14px;
+    color: #0078d4;
+    text-decoration: underline;
+  }
+
+  .slider-buttons {
+    position: absolute;
+    top: 50%;
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    transform: translateY(-50%);
+    padding: 0 10px;
+    box-sizing: border-box;
+  }
+
+  .slider-buttons button {
+    background-color: #0078d4;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 16px;
+  }
+
+  .right-section {
+    flex: 0 0 25%;
+    max-width: 300px;
+    min-width: 220px;
+    text-align: center;
+    padding: 20px;
+    border-left: 1px solid #ddd;
+    box-sizing: border-box;
+  }
+
+  .bulb-icon {
+    font-size: 48px;
+    color: #ffc107;
+    margin-bottom: 10px;
+  }
+
+  .glow {
+    animation: glow 1s infinite alternate;
+  }
+
+  @keyframes glow {
+    from { text-shadow: 0 0 5px #ff0; }
+    to { text-shadow: 0 0 20px #ff0, 0 0 30px #ff0; }
+  }
+
+  .submit-button {
+    background-color: #28a745;
+    border: none;
+    color: white;
+    padding: 10px 20px;
+    margin-top: 10px;
+    font-size: 16px;
+    cursor: pointer;
+  }
+
+  .submit-text {
+    margin-top: 10px;
+    font-size: 14px;
+    color: #555;
+  }
+
+  /* Responsive layout */
+  @media (max-width: 768px) {
+    .custom-slider-container {
+      flex-direction: column;
+    }
+
+    .left-slider, .right-section {
+      flex: 1 1 100%;
+      max-width: 100%;
+    }
+
+    .slider-buttons {
+      top: 90%;
+    }
+
+    .slide .content {
+      font-size: 14px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .slider-buttons button {
+      font-size: 14px;
+      padding: 6px 10px;
+    }
+
+    .submit-button {
+      font-size: 14px;
+    }
+
+    .bulb-icon {
+      font-size: 40px;
+    }
+  }
+</style>
+
+<div class="custom-slider-container">
+  <div class="left-slider" id="sliderContainer">
+    <div class="slider-buttons">
+      <button onclick="prevSlide()">❮</button>
+      <button onclick="nextSlide()">❯</button>
+    </div>
+  </div>
+  <div class="right-section">
+    <div id="bulbIcon" class="bulb-icon glow">💡</div>
+    <button class="submit-button">Submit Idea</button>
+    <div class="submit-text">Share your innovative thoughts with us and make a difference!</div>
+  </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+  let currentSlide = 0;
+  let slides = [];
+
+  function renderSlides(data) {
+    const container = $('#sliderContainer');
+    data.forEach((item, index) => {
+      const isTestimonial = item.Category.toLowerCase() === "testimonial";
+      const slideClass = isTestimonial ? "testimonial" : "article";
+
+      let slideHtml = `<div class="slide ${slideClass} ${index === 0 ? 'active' : ''}">`;
+
+      if (isTestimonial) {
+        slideHtml += `
+          <img src="${item.ImageURL}" alt="${item.Title}" />
+          <div class="content">
+            <div class="title">${item.Title}</div>
+            <div><strong>${item.Designation}</strong><br>${item.Comment}</div>
+          </div>
+        `;
+      } else {
+        slideHtml += `
+          <a href="${item.ArticleLink}" target="_blank">
+            <img src="${item.ImageURL}" alt="${item.Title}" />
+          </a>
+          <div class="content">
+            <div class="title">
+              <a href="${item.ArticleLink}" target="_blank">${item.Title}</a>
+            </div>
+            <div>${item.Content}</div>
+            <a class="read-more" href="${item.ArticleLink}" target="_blank">Read More</a>
+          </div>
+        `;
+      }
+
+      slideHtml += `</div>`;
+      container.prepend(slideHtml);
+    });
+
+    slides = $('.slide');
+  }
+
+  function nextSlide() {
+    slides.eq(currentSlide).removeClass('active');
+    currentSlide = (currentSlide + 1) % slides.length;
+    slides.eq(currentSlide).addClass('active');
+  }
+
+  function prevSlide() {
+    slides.eq(currentSlide).removeClass('active');
+    currentSlide = (currentSlide - 1 + slides.length) % slides.length;
+    slides.eq(currentSlide).addClass('active');
+  }
+
+  function startSlider() {
+    setInterval(nextSlide, 5000);
+  }
+
+  function getListItems() {
+    const siteUrl = _spPageContextInfo.webAbsoluteUrl;
+    const listName = "YourListName"; // Update to your SharePoint list name
+
+    $.ajax({
+      url: `${siteUrl}/_api/web/lists/getbytitle('${listName}')/items?$select=Title,Category,ImageURL,Content,Designation,Comment,ArticleLink`,
+      method: "GET",
+      headers: { "Accept": "application/json;odata=verbose" },
+      success: function(data) {
+        const items = data.d.results.map(item => ({
+          Title: item.Title,
+          Category: item.Category,
+          ImageURL: item.ImageURL,
+          Content: item.Content,
+          Designation: item.Designation,
+          Comment: item.Comment,
+          ArticleLink: item.ArticleLink
+        }));
+        renderSlides(items);
+        startSlider();
+      },
+      error: function(error) {
+        console.error("Error fetching list items", error);
+      }
+    });
+  }
+
+  $(document).ready(function() {
+    getListItems();
+    setTimeout(() => {
+      $('#bulbIcon').removeClass('glow');
+    }, 4000);
+  });
+</script>
