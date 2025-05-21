@@ -1,4 +1,3 @@
-
 <style>
   .custom-slider-container {
     display: flex;
@@ -10,39 +9,87 @@
 
   .left-slider {
     flex: 1 1 75%;
-    position: relative;
-    overflow: hidden;
+    min-width: 0;
     padding: 10px;
-    box-sizing: border-box;
+    overflow: hidden;
+    position: relative;
   }
 
   .slide {
-    display: none;
-    text-align: center;
-    transition: all 0.5s ease-in-out;
+    position: absolute;
+    top: 0;
+    left: 100%;
+    opacity: 0;
+    width: 100%;
+    transition: all 0.6s ease-in-out;
   }
 
   .slide.active {
-    display: block;
+    left: 0;
+    opacity: 1;
+    z-index: 1;
   }
 
-  .slide img {
-    width: 120px;
-    height: 120px;
+  .slide.article img {
+    width: 40%;
+    height: auto;
+    object-fit: cover;
+    border-radius: 6px;
+    display: block;
+    margin: 0 auto;
+  }
+
+  .slide.testimonial img {
+    width: 100px;
+    height: 100px;
     object-fit: cover;
     border-radius: 50%;
-    margin: 10px auto;
+    display: block;
+    margin: 0 auto 10px;
   }
 
   .slide .content {
     padding: 10px;
     font-size: 16px;
     color: #333;
+    text-align: center;
   }
 
   .slide .title {
     font-weight: bold;
     font-size: 18px;
+    margin: 10px 0 5px;
+  }
+
+  .slide .title a {
+    text-decoration: none;
+    color: #333;
+  }
+
+  .slide.testimonial {
+    background-color: #f9f9f9;
+    padding: 15px;
+    margin: 10px auto;
+    max-width: 600px;
+  }
+
+  .slide.testimonial .designation {
+    font-style: italic;
+    margin-bottom: 5px;
+  }
+
+  .slide.testimonial .comment {
+    font-size: 16px;
+    color: #555;
+    font-style: normal;
+  }
+
+  .read-more {
+    display: inline-block;
+    margin-top: 10px;
+    font-size: 14px;
+    color: #0078d4;
+    text-decoration: underline;
   }
 
   .slider-buttons {
@@ -52,21 +99,25 @@
     display: flex;
     justify-content: space-between;
     transform: translateY(-50%);
-    padding: 0 10px;
     box-sizing: border-box;
+    z-index: 2;
+    padding: 0 10px;
   }
 
   .slider-buttons button {
-    background-color: #0078d4;
-    color: white;
-    border: none;
-    padding: 8px 12px;
+    background-color: transparent;
+    color: red;
+    border: 2px solid red;
+    padding: 6px 10px;
     cursor: pointer;
-    font-size: 16px;
+    font-size: 18px;
+    border-radius: 4px;
   }
 
   .right-section {
-    flex: 1 1 25%;
+    flex: 0 0 25%;
+    max-width: 300px;
+    min-width: 220px;
     text-align: center;
     padding: 20px;
     border-left: 1px solid #ddd;
@@ -76,6 +127,7 @@
   .bulb-icon {
     font-size: 48px;
     color: #ffc107;
+    margin-bottom: 10px;
   }
 
   .glow {
@@ -103,41 +155,31 @@
     color: #555;
   }
 
-  .read-more {
-    display: inline-block;
-    margin-top: 10px;
-    font-size: 14px;
-    color: #0078d4;
-    text-decoration: underline;
-  }
-
-  /* Mobile & Tablet Responsiveness */
+  /* Responsive layout */
   @media (max-width: 768px) {
     .custom-slider-container {
       flex-direction: column;
     }
 
-    .left-slider,
-    .right-section {
+    .left-slider, .right-section {
       flex: 1 1 100%;
-      padding: 10px;
+      max-width: 100%;
     }
 
-    .slide img {
-      width: 100px;
-      height: 100px;
+    .slide.article img {
+      width: 80%;
     }
 
     .slider-buttons {
       top: 90%;
     }
-  }
 
-  @media (max-width: 480px) {
     .slide .content {
       font-size: 14px;
     }
+  }
 
+  @media (max-width: 480px) {
     .slider-buttons button {
       font-size: 14px;
       padding: 6px 10px;
@@ -155,18 +197,15 @@
 
 <div class="custom-slider-container">
   <div class="left-slider" id="sliderContainer">
-    <!-- Slides will be injected here -->
     <div class="slider-buttons">
-      <button onclick="prevSlide()">❮</button>
-      <button onclick="nextSlide()">❯</button>
+      <button type="button" onclick="prevSlide()">❮</button>
+      <button type="button" onclick="nextSlide()">❯</button>
     </div>
   </div>
   <div class="right-section">
     <div id="bulbIcon" class="bulb-icon glow">💡</div>
     <button class="submit-button">Submit Idea</button>
-    <div class="submit-text">
-      Share your innovative thoughts with us and make a difference!
-    </div>
+    <div class="submit-text">Share your innovative thoughts with us and make a difference!</div>
   </div>
 </div>
 
@@ -178,20 +217,40 @@
   function renderSlides(data) {
     const container = $('#sliderContainer');
     data.forEach((item, index) => {
-      let slideHtml = `
-        <div class="slide ${index === 0 ? 'active' : ''}">
+      const isTestimonial = item.Category?.toLowerCase() === "testimonial";
+      const slideClass = isTestimonial ? "testimonial" : "article";
+      const articleLink = item.ArticleLink || "/sites/yoursite/SitePages/Default.aspx"; // Fallback
+
+      let slideHtml = `<div class="slide ${slideClass} ${index === 0 ? 'active' : ''}">`;
+
+      if (isTestimonial) {
+        slideHtml += `
           <img src="${item.ImageURL}" alt="${item.Title}" />
           <div class="content">
-            <div class="title">${item.Title}</div>`;
-      if (item.Category === 'Testimonial') {
-        slideHtml += `<div><strong>${item.Designation}</strong><br>${item.Comment}</div>`;
+            <div class="title">${item.Title}</div>
+            <div class="designation"><i>${item.Designation}</i></div>
+            <div class="comment">“${item.Comment}”</div>
+          </div>
+        `;
       } else {
-        slideHtml += `<div>${item.Content}</div>
-                      <a class="read-more" href="${item.ArticleLink}" target="_blank">Read More</a>`;
+        slideHtml += `
+          <a href="${articleLink}" target="_blank">
+            <img src="${item.ImageURL}" alt="${item.Title}" />
+          </a>
+          <div class="content">
+            <div class="title">
+              <a href="${articleLink}" target="_blank">${item.Title}</a>
+            </div>
+            <div>${item.Content}</div>
+            <a class="read-more" href="${articleLink}" target="_blank">Read More</a>
+          </div>
+        `;
       }
-      slideHtml += `</div></div>`;
-      container.prepend(slideHtml);
+
+      slideHtml += `</div>`;
+      container.append(slideHtml);
     });
+
     slides = $('.slide');
   }
 
@@ -208,14 +267,12 @@
   }
 
   function startSlider() {
-    setInterval(() => {
-      nextSlide();
-    }, 5000); // Auto slide every 5 seconds
+    setInterval(nextSlide, 5000);
   }
 
   function getListItems() {
     const siteUrl = _spPageContextInfo.webAbsoluteUrl;
-    const listName = "YourListName"; // Replace with your SharePoint list name
+    const listName = "YourListName"; // Update this
 
     $.ajax({
       url: `${siteUrl}/_api/web/lists/getbytitle('${listName}')/items?$select=Title,Category,ImageURL,Content,Designation,Comment,ArticleLink`,
@@ -242,8 +299,6 @@
 
   $(document).ready(function() {
     getListItems();
-
-    // Stop glowing after 4 seconds
     setTimeout(() => {
       $('#bulbIcon').removeClass('glow');
     }, 4000);
