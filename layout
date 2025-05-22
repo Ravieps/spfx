@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Responsive Homepage Layout</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body, html {
+      height: 100%;
+      font-family: Arial, sans-serif;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    header, .section, footer {
+      padding: 1rem;
+      text-align: center;
+    }
+
+    header {
+      background-color: #004080;
+      color: white;
+    }
+
+    .section {
+      flex: 1;
+      padding: 1rem;
+    }
+
+    .section-1, .section-2, .section-3 {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 1rem;
+    }
+
+    .icon-button {
+      background-color: #0078d7;
+      border: none;
+      color: white;
+      padding: 1rem;
+      width: 150px;
+      height: 150px;
+      border-radius: 10px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      font-size: 14px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    .icon-button:hover {
+      background-color: #005ea2;
+    }
+
+    .icon-button i {
+      font-size: 24px;
+      margin-bottom: 10px;
+    }
+
+    footer {
+      background-color: #333;
+      color: white;
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+    }
+
+    @media (max-width: 768px) {
+      .icon-button {
+        width: 100px;
+        height: 100px;
+        font-size: 12px;
+      }
+
+      .icon-button i {
+        font-size: 18px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .icon-button {
+        width: 90%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Section 1: Navigation Icons -->
+    <header>
+      <div class="section-1">
+        <button class="icon-button" onclick="navigateTo('create-intake')">
+          <i>📥</i>
+          Create New Intake
+        </button>
+        <button class="icon-button" onclick="navigateTo('submitted-intakes')">
+          <i>📄</i>
+          Submitted Intakes
+        </button>
+        <button class="icon-button" onclick="navigateTo('design-phase')">
+          <i>🎨</i>
+          Design Phase
+        </button>
+        <button class="icon-button" onclick="navigateTo('inventory-admin')">
+          <i>📦</i>
+          Inventory Admin Phase
+        </button>
+      </div>
+    </header>
+
+    <!-- Section 2: Promoted Links -->
+    <div class="section">
+      <div class="section-2">
+        <div class="icon-button">
+          <i>🔗</i>
+          Promoted Link 1
+        </div>
+        <div class="icon-button">
+          <i>🔗</i>
+          Promoted Link 2
+        </div>
+        <!-- Add more promoted links as needed -->
+      </div>
+    </div>
+
+    <!-- Section 3: Open Section -->
+    <div class="section">
+      <div class="section-3">
+        <p>Section 3 - Reserved for future content.</p>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+      <p>© 2025 Your Company. All rights reserved.</p>
+    </footer>
+  </div>
+
+  <script>
+    function navigateTo(page) {
+      alert('Navigating to: ' + page);
+      // Replace this alert with actual navigation logic
+    }
+  </script>
+</body>
+</html>
