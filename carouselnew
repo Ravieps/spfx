@@ -1,306 +1,355 @@
-<style>
-  .custom-slider-container {
-    display: flex;
-    flex-wrap: wrap;
-    width: 100%;
-    font-family: Arial, sans-serif;
-    box-sizing: border-box;
-  }
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Slider with Articles, Testimonials & Submit Idea</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
 
-  .left-slider {
-    flex: 1 1 75%;
-    min-width: 0;
-    padding: 10px;
-    overflow: hidden;
-    position: relative;
-  }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      padding: 20px;
+    }
 
-  .slide {
-    position: absolute;
-    top: 0;
-    left: 100%;
-    opacity: 0;
-    width: 100%;
-    transition: all 0.6s ease-in-out;
-  }
+    .main-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      max-width: 1200px;
+      margin: auto;
+    }
 
-  .slide.active {
-    left: 0;
-    opacity: 1;
-    z-index: 1;
-  }
+    .slider-wrapper {
+      flex: 1 1 75%;
+      position: relative;
+      background: #fff;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 0 15px rgba(0,0,0,0.1);
+      min-width: 300px;
+    }
 
-  .slide.article img {
-    width: 40%;
-    height: auto;
-    object-fit: cover;
-    border-radius: 6px;
-    display: block;
-    margin: 0 auto;
-  }
+    .slider {
+      display: flex;
+      transition: transform 0.6s ease;
+      width: 100%;
+    }
 
-  .slide.testimonial img {
-    width: 100px;
-    height: 100px;
-    object-fit: cover;
-    border-radius: 50%;
-    display: block;
-    margin: 0 auto 10px;
-  }
+    .slide {
+      display: flex;
+      min-width: 100%;
+      height: 300px;
+    }
 
-  .slide .content {
-    padding: 10px;
-    font-size: 16px;
-    color: #333;
-    text-align: center;
-  }
+    .slide.article .slide-image {
+      width: 40%;
+    }
 
-  .slide .title {
-    font-weight: bold;
-    font-size: 18px;
-    margin: 10px 0 5px;
-  }
+    .slide.article .slide-image img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
 
-  .slide .title a {
-    text-decoration: none;
-    color: #333;
-  }
+    .slide.article .slide-content {
+      width: 60%;
+      padding: 20px;
+      overflow: auto;
+    }
 
-  .slide.testimonial {
-    background-color: #f9f9f9;
-    padding: 15px;
-    margin: 10px auto;
-    max-width: 600px;
-  }
+    .slide-content h2 {
+      margin-top: 0;
+      font-size: 22px;
+    }
 
-  .slide.testimonial .designation {
-    font-style: italic;
-    margin-bottom: 5px;
-  }
+    .slide-content p {
+      color: #555;
+    }
 
-  .slide.testimonial .comment {
-    font-size: 16px;
-    color: #555;
-    font-style: normal;
-  }
+    /* Testimonial Slide Styling */
+    .slide.testimonial {
+      display: flex;
+      align-items: flex-start; /* Changed from center to top-align */
+      flex-direction: row;
+    }
 
-  .read-more {
-    display: inline-block;
-    margin-top: 10px;
-    font-size: 14px;
-    color: #0078d4;
-    text-decoration: underline;
-  }
+    .slide.testimonial .testimonial-img {
+      width: 35%;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start; /* Align image to top */
+      padding: 20px;
+    }
 
-  .slider-buttons {
-    position: absolute;
-    top: 50%;
-    width: 100%;
-    display: flex;
-    justify-content: space-between;
-    transform: translateY(-50%);
-    box-sizing: border-box;
-    z-index: 2;
-    padding: 0 10px;
-  }
+    .slide.testimonial .testimonial-img img {
+      width: 150px;
+      height: 150px;
+      border-radius: 50%;
+      object-fit: cover;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
 
-  .slider-buttons button {
-    background-color: transparent;
-    color: red;
-    border: 2px solid red;
-    padding: 6px 10px;
-    cursor: pointer;
-    font-size: 18px;
-    border-radius: 4px;
-  }
+    .slide.testimonial .testimonial-text {
+      width: 65%;
+      padding: 20px;
+    }
 
-  .right-section {
-    flex: 0 0 25%;
-    max-width: 300px;
-    min-width: 220px;
-    text-align: center;
-    padding: 20px;
-    border-left: 1px solid #ddd;
-    box-sizing: border-box;
-  }
+    .testimonial-text h4 {
+      margin: 0 0 6px;
+      font-size: 20px;
+    }
 
-  .bulb-icon {
-    font-size: 48px;
-    color: #ffc107;
-    margin-bottom: 10px;
-  }
+    .testimonial-text small {
+      display: block;
+      color: #777;
+      margin-bottom: 10px;
+    }
 
-  .glow {
-    animation: glow 1s infinite alternate;
-  }
+    .testimonial-text blockquote {
+      margin: 0;
+      font-style: italic;
+      color: #555;
+      quotes: "“" "”";
+      line-height: 1.5;
+    }
 
-  @keyframes glow {
-    from { text-shadow: 0 0 5px #ff0; }
-    to { text-shadow: 0 0 20px #ff0, 0 0 30px #ff0; }
-  }
+    .testimonial-text blockquote::before {
+      content: open-quote;
+      font-size: 30px;
+      vertical-align: -0.3em;
+      margin-right: 4px;
+    }
 
-  .submit-button {
-    background-color: #28a745;
-    border: none;
-    color: white;
-    padding: 10px 20px;
-    margin-top: 10px;
-    font-size: 16px;
-    cursor: pointer;
-  }
+    .testimonial-text blockquote::after {
+      content: close-quote;
+      font-size: 30px;
+      vertical-align: -0.3em;
+      margin-left: 4px;
+    }
 
-  .submit-text {
-    margin-top: 10px;
-    font-size: 14px;
-    color: #555;
-  }
+    .slider-arrows {
+      position: absolute;
+      top: 50%;
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      transform: translateY(-50%);
+      pointer-events: none;
+    }
 
-  /* Responsive layout */
-  @media (max-width: 768px) {
-    .custom-slider-container {
+    .arrow {
+      background: transparent;
+      border: none;
+      color: rgb(168, 14, 14);
+      font-size: 26px;
+      padding: 12px;
+      cursor: pointer;
+      pointer-events: all;
+      transition: background 0.3s, transform 0.3s;
+    }
+
+    .submit-idea-container {
+      flex: 1 1 20%;
+      display: flex;
       flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-width: 200px;
+      text-align: center;
     }
 
-    .left-slider, .right-section {
-      flex: 1 1 100%;
-      max-width: 100%;
+    .submit-idea {
+      background: #003366;
+      border: none;
+      border-radius: 50px;
+      padding: 12px 20px 12px 45px;
+      font-size: 16px;
+      font-weight: bold;
+      color: #fff;
+      cursor: pointer;
+      position: relative;
     }
 
-    .slide.article img {
-      width: 80%;
+    .submit-idea::before {
+      content: "💡";
+      font-size: 22px;
+      position: absolute;
+      left: 15px;
+      top: 50%;
+      transform: translateY(-50%);
+      animation: glow 1.5s infinite alternate;
     }
 
-    .slider-buttons {
-      top: 90%;
+    @keyframes glow {
+      0% {
+        text-shadow: 0 0 5px rgba(255, 255, 0, 0.5);
+      }
+      100% {
+        text-shadow: 0 0 15px rgba(255, 255, 0, 1);
+      }
     }
 
-    .slide .content {
+    .submit-idea-container p {
+      margin-top: 10px;
       font-size: 14px;
-    }
-  }
-
-  @media (max-width: 480px) {
-    .slider-buttons button {
-      font-size: 14px;
-      padding: 6px 10px;
+      color: #333;
     }
 
-    .submit-button {
-      font-size: 14px;
-    }
+    @media (max-width: 768px) {
+      .main-container {
+        flex-direction: column;
+      }
 
-    .bulb-icon {
-      font-size: 40px;
-    }
-  }
-</style>
+      .slider-wrapper, .submit-idea-container {
+        width: 100%;
+      }
 
-<div class="custom-slider-container">
-  <div class="left-slider" id="sliderContainer">
-    <div class="slider-buttons">
-      <button type="button" onclick="prevSlide()">❮</button>
-      <button type="button" onclick="nextSlide()">❯</button>
+      .slide {
+        flex-direction: column;
+        height: auto;
+      }
+
+      .slide.article .slide-image,
+      .slide.article .slide-content,
+      .slide.testimonial .testimonial-img,
+      .slide.testimonial .testimonial-text {
+        width: 100%;
+        padding: 10px;
+        text-align: center;
+      }
+
+      .slide.testimonial .testimonial-img img {
+        margin: auto;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="main-container">
+    <!-- Slider Section -->
+    <div class="slider-wrapper">
+      <div class="slider" id="slider">
+        <!-- JS will inject slides -->
+      </div>
+
+      <!-- Arrows -->
+      <div class="slider-arrows">
+        <button class="arrow" onclick="prevSlide()">‹</button>
+        <button class="arrow" onclick="nextSlide()">›</button>
+      </div>
+    </div>
+
+    <!-- Submit Idea Button -->
+    <div class="submit-idea-container">
+      <button class="submit-idea" onclick="alert('Submit your innovative idea!')">Submit Idea</button>
+      <p>Submit your Automation Idea</p>
     </div>
   </div>
-  <div class="right-section">
-    <div id="bulbIcon" class="bulb-icon glow">💡</div>
-    <button class="submit-button">Submit Idea</button>
-    <div class="submit-text">Share your innovative thoughts with us and make a difference!</div>
-  </div>
-</div>
 
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script>
-  let currentSlide = 0;
-  let slides = [];
+  <script>
+    const slider = document.getElementById("slider");
 
-  function renderSlides(data) {
-    const container = $('#sliderContainer');
-    data.forEach((item, index) => {
-      const isTestimonial = item.Category?.toLowerCase() === "testimonial";
-      const slideClass = isTestimonial ? "testimonial" : "article";
-      const articleLink = item.ArticleLink || "/sites/yoursite/SitePages/Default.aspx"; // Fallback
+    const slides = [];
 
-      let slideHtml = `<div class="slide ${slideClass} ${index === 0 ? 'active' : ''}">`;
+function fetchSlidesFromSharePoint() {
+  const siteUrl = _spPageContextInfo.webAbsoluteUrl;
+  const listName = "YourListName"; // Replace with your list name
+  const endpoint = `${siteUrl}/_api/web/lists/getbytitle('${listName}')/items?$select=Title,Category,Description,ImageURL,Designation`;
 
-      if (isTestimonial) {
-        slideHtml += `
-          <img src="${item.ImageURL}" alt="${item.Title}" />
-          <div class="content">
-            <div class="title">${item.Title}</div>
-            <div class="designation"><i>${item.Designation}</i></div>
-            <div class="comment">“${item.Comment}”</div>
-          </div>
-        `;
-      } else {
-        slideHtml += `
-          <a href="${articleLink}" target="_blank">
-            <img src="${item.ImageURL}" alt="${item.Title}" />
-          </a>
-          <div class="content">
-            <div class="title">
-              <a href="${articleLink}" target="_blank">${item.Title}</a>
-            </div>
-            <div>${item.Content}</div>
-            <a class="read-more" href="${articleLink}" target="_blank">Read More</a>
-          </div>
-        `;
-      }
-
-      slideHtml += `</div>`;
-      container.append(slideHtml);
-    });
-
-    slides = $('.slide');
-  }
-
-  function nextSlide() {
-    slides.eq(currentSlide).removeClass('active');
-    currentSlide = (currentSlide + 1) % slides.length;
-    slides.eq(currentSlide).addClass('active');
-  }
-
-  function prevSlide() {
-    slides.eq(currentSlide).removeClass('active');
-    currentSlide = (currentSlide - 1 + slides.length) % slides.length;
-    slides.eq(currentSlide).addClass('active');
-  }
-
-  function startSlider() {
-    setInterval(nextSlide, 5000);
-  }
-
-  function getListItems() {
-    const siteUrl = _spPageContextInfo.webAbsoluteUrl;
-    const listName = "YourListName"; // Update this
-
-    $.ajax({
-      url: `${siteUrl}/_api/web/lists/getbytitle('${listName}')/items?$select=Title,Category,ImageURL,Content,Designation,Comment,ArticleLink`,
-      method: "GET",
-      headers: { "Accept": "application/json;odata=verbose" },
-      success: function(data) {
-        const items = data.d.results.map(item => ({
-          Title: item.Title,
-          Category: item.Category,
-          ImageURL: item.ImageURL,
-          Content: item.Content,
-          Designation: item.Designation,
-          Comment: item.Comment,
-          ArticleLink: item.ArticleLink
-        }));
-        renderSlides(items);
-        startSlider();
-      },
-      error: function(error) {
-        console.error("Error fetching list items", error);
+  fetch(endpoint, {
+    method: "GET",
+    headers: {
+      "Accept": "application/json;odata=verbose"
+    }
+  })
+  .then(response => response.json())
+  .then(data => {
+    data.d.results.forEach(item => {
+      const category = item.Category.toLowerCase(); // 'Article' or 'Testimonial'
+      if (category === "article") {
+        slides.push({
+          type: "article",
+          title: item.Title,
+          text: item.Description,
+          image: item.ImageURL
+        });
+      } else if (category === "testimonial") {
+        slides.push({
+          type: "testimonial",
+          name: item.Title,
+          designation: item.Designation || "",
+          comment: item.Description,
+          image: item.ImageURL
+        });
       }
     });
-  }
-
-  $(document).ready(function() {
-    getListItems();
-    setTimeout(() => {
-      $('#bulbIcon').removeClass('glow');
-    }, 4000);
+    renderSlides();
+  })
+  .catch(error => {
+    console.error("Error fetching data from SharePoint list:", error);
   });
-</script>
+}
+
+
+    let currentSlide = 0;
+
+    function renderSlides() {
+      slider.innerHTML = "";
+      slides.forEach((slide) => {
+        const slideDiv = document.createElement("div");
+        slideDiv.className = `slide ${slide.type}`;
+
+        if (slide.type === "article") {
+          slideDiv.innerHTML = `
+            <div class="slide-image"><img src="${slide.image}" alt=""></div>
+            <div class="slide-content">
+              <h2>${slide.title}</h2>
+              <p>${slide.text}</p>
+            </div>
+          `;
+        } else if (slide.type === "testimonial") {
+          slideDiv.innerHTML = `
+            <div class="testimonial-img">
+              <img src="${slide.image}" alt="${slide.name}">
+            </div>
+            <div class="testimonial-text">
+              <h4>${slide.name}</h4>
+              <small>${slide.designation}</small>
+              <blockquote>${slide.comment}</blockquote>
+            </div>
+          `;
+        }
+
+        slider.appendChild(slideDiv);
+      });
+
+      updateSliderPosition();
+    }
+
+    function updateSliderPosition() {
+      const offset = -currentSlide * 100;
+      slider.style.transform = `translateX(${offset}%)`;
+    }
+
+    function nextSlide() {
+      currentSlide = (currentSlide + 1) % slides.length;
+      updateSliderPosition();
+    }
+
+    function prevSlide() {
+      currentSlide = (currentSlide - 1 + slides.length) % slides.length;
+      updateSliderPosition();
+    }
+
+    setInterval(nextSlide, 5000);
+fetchSlidesFromSharePoint();
+
+  </script>
+</body>
+</html>
