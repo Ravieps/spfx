@@ -1,0 +1,126 @@
+<style>
+  .databar {
+    width: 100%;
+    background: url('https://via.placeholder.com/1600x400') no-repeat center center;
+    background-size: cover;
+    padding: 30px 10px;
+    box-sizing: border-box;
+    color: white;
+    font-family: 'Segoe UI', sans-serif;
+    overflow-x: auto;
+  }
+
+  .stat-bar {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 40px;
+    min-width: 800px;
+  }
+
+  .stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 120px;
+    padding: 10px 15px;
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 8px;
+  }
+
+  .dept-label {
+    font-size: 12px;
+    font-weight: bold;
+    color: #ccc;
+    margin-bottom: 5px;
+    text-align: center;
+  }
+
+  .number {
+    font-size: 28px;
+    font-weight: bold;
+    color: #fff;
+  }
+
+  @media (max-width: 768px) {
+    .stat-bar {
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+    .stat-item {
+      min-width: 100px;
+    }
+  }
+</style>
+
+<div class="databar">
+  <div class="stat-bar">
+    <!-- Technology Initiative -->
+    <div class="stat-item">
+      <div class="dept-label">Technology Initiative - Label 1</div>
+      <div class="number" data-count="150">0</div>
+    </div>
+    <div class="stat-item">
+      <div class="dept-label">Technology Initiative - Label 2</div>
+      <div class="number" data-count="200">0</div>
+    </div>
+    <div class="stat-item">
+      <div class="dept-label">Technology Initiative - Label 3</div>
+      <div class="number" data-count="250">0</div>
+    </div>
+
+    <!-- Operational Excellence -->
+    <div class="stat-item">
+      <div class="dept-label">Operational Excellence - Label 1</div>
+      <div class="number" data-count="180">0</div>
+    </div>
+    <div class="stat-item">
+      <div class="dept-label">Operational Excellence - Label 2</div>
+      <div class="number" data-count="220">0</div>
+    </div>
+    <div class="stat-item">
+      <div class="dept-label">Operational Excellence - Label 3</div>
+      <div class="number" data-count="300">0</div>
+    </div>
+
+    <!-- Automation -->
+    <div class="stat-item">
+      <div class="dept-label">Automation - Label 1</div>
+      <div class="number" data-count="120">0</div>
+    </div>
+    <div class="stat-item">
+      <div class="dept-label">Automation - Label 2</div>
+      <div class="number" data-count="180">0</div>
+    </div>
+    <div class="stat-item">
+      <div class="dept-label">Automation - Label 3</div>
+      <div class="number" data-count="210">0</div>
+    </div>
+  </div>
+</div>
+
+<!-- jQuery CDN -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<script>
+  $(document).ready(function () {
+    $('.number').each(function () {
+      var $this = $(this);
+      var countTo = parseInt($this.attr('data-count'), 10);
+      $({ countNum: 0 }).animate(
+        { countNum: countTo },
+        {
+          duration: 6000,
+          easing: 'swing',
+          step: function () {
+            $this.text(Math.floor(this.countNum));
+          },
+          complete: function () {
+            $this.text(this.countNum);
+          }
+        }
+      );
+    });
+  });
+</script>
