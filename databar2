@@ -13,7 +13,6 @@
     display: flex;
     flex-wrap: wrap;
     justify-content: space-around;
-    align-items: flex-start;
     gap: 20px;
     text-align: center;
   }
@@ -29,7 +28,6 @@
     margin-bottom: 15px;
     text-transform: uppercase;
     color: #fff;
-    text-align: center;
   }
 
   .stat-row {
@@ -64,101 +62,77 @@
     .department-block {
       flex: 1 1 100%;
     }
-
-    .stat-row {
-      justify-content: center;
-    }
-
-    .stat-item {
-      flex: 1 1 30%;
-      min-width: 90px;
-    }
   }
 </style>
 
 <div class="databar">
-  <div class="departments-wrapper">
-
-    <!-- Technology Initiative -->
-    <div class="department-block">
-      <div class="department-title">Technology Initiative</div>
-      <div class="stat-row">
-        <div class="stat-item">
-          <div class="number" data-count="150">0</div>
-          <div class="label">Label 1</div>
-        </div>
-        <div class="stat-item">
-          <div class="number" data-count="200">0</div>
-          <div class="label">Label 2</div>
-        </div>
-        <div class="stat-item">
-          <div class="number" data-count="250">0</div>
-          <div class="label">Label 3</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Operational Excellence -->
-    <div class="department-block">
-      <div class="department-title">Operational Excellence</div>
-      <div class="stat-row">
-        <div class="stat-item">
-          <div class="number" data-count="180">0</div>
-          <div class="label">Label 1</div>
-        </div>
-        <div class="stat-item">
-          <div class="number" data-count="220">0</div>
-          <div class="label">Label 2</div>
-        </div>
-        <div class="stat-item">
-          <div class="number" data-count="300">0</div>
-          <div class="label">Label 3</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Automation -->
-    <div class="department-block">
-      <div class="department-title">Automation</div>
-      <div class="stat-row">
-        <div class="stat-item">
-          <div class="number" data-count="120">0</div>
-          <div class="label">Label 1</div>
-        </div>
-        <div class="stat-item">
-          <div class="number" data-count="180">0</div>
-          <div class="label">Label 2</div>
-        </div>
-        <div class="stat-item">
-          <div class="number" data-count="210">0</div>
-          <div class="label">Label 3</div>
-        </div>
-      </div>
-    </div>
-
+  <div class="departments-wrapper" id="departmentsWrapper">
+    <!-- Dynamic content inserted here -->
   </div>
 </div>
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-
-<script>
+<script type="text/javascript">
   $(document).ready(function () {
-    $('.number').each(function () {
-      var $this = $(this);
-      var countTo = parseInt($this.attr('data-count'), 10);
-      $({ countNum: 0 }).animate(
-        { countNum: countTo },
-        {
-          duration: 6000,
-          easing: 'swing',
-          step: function () {
-            $this.text(Math.floor(this.countNum));
-          },
-          complete: function () {
-            $this.text(this.countNum);
-          }
+    $.ajax({
+      url: _spPageContextInfo.webAbsoluteUrl + "/_api/web/lists/getbytitle('DepartmentStats')/items?$select=Title,Label,Count",
+      method: "GET",
+      headers: {
+        "Accept": "application/json;odata=verbose"
+      },
+      success: function (data) {
+        var items = data.d.results;
+
+        // Group by Title
+        var grouped = {};
+        items.forEach(function (item) {
+          if (!grouped[item.Title]) grouped[item.Title] = [];
+          grouped[item.Title].push({
+            label: item.Label,
+            count: item.Count
+          });
+        });
+
+        // Build HTML
+        for (var dept in grouped) {
+          var block = `<div class="department-block">
+            <div class="department-title">${dept}</div>
+            <div class="stat-row">`;
+
+          grouped[dept].forEach(function (entry) {
+            block += `
+              <div class="stat-item">
+                <div class="number" data-count="${entry.count}">0</div>
+                <div class="label">${entry.label}</div>
+              </div>`;
+          });
+
+          block += `</div></div>`;
+          $('#departmentsWrapper').append(block);
         }
-      );
+
+        // Animate numbers
+        $('.number').each(function () {
+          var $this = $(this);
+          var countTo = parseInt($this.attr('data-count'), 10);
+          $({ countNum: 0 }).animate(
+            { countNum: countTo },
+            {
+              duration: 6000,
+              easing: 'swing',
+              step: function () {
+                $this.text(Math.floor(this.countNum));
+              },
+              complete: function () {
+                $this.text(this.countNum);
+              }
+            }
+          );
+        });
+      },
+      error: function (error) {
+        console.log("Error fetching list data: ", error);
+      }
     });
   });
 </script>
