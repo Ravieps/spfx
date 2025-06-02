@@ -1,0 +1,111 @@
+<style>
+  .databar {
+    width: 100%;
+    background: url('https://via.placeholder.com/1600x400') no-repeat center center;
+    background-size: cover;
+    padding: 40px 20px;
+    box-sizing: border-box;
+    color: white;
+    font-family: 'Segoe UI', sans-serif;
+  }
+
+  .department-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-around;
+    text-align: center;
+  }
+
+  .department {
+    flex: 1 1 30%;
+    margin: 10px;
+    background: rgba(0, 0, 0, 0.4);
+    padding: 20px;
+    border-radius: 10px;
+  }
+
+  .dept-title {
+    font-size: 24px;
+    margin-bottom: 15px;
+    font-weight: bold;
+    text-transform: uppercase;
+  }
+
+  .label {
+    font-size: 16px;
+    margin-top: 10px;
+    color: #ccc;
+  }
+
+  .number {
+    font-size: 36px;
+    font-weight: bold;
+    color: #fff;
+  }
+
+  @media (max-width: 768px) {
+    .department {
+      flex: 1 1 100%;
+    }
+  }
+</style>
+
+<div class="databar">
+  <div class="department-container">
+    <!-- Technology Initiative -->
+    <div class="department">
+      <div class="dept-title">Technology Initiative</div>
+      <div class="number" data-count="150">0</div>
+      <div class="label">Label 1</div>
+      <div class="number" data-count="200">0</div>
+      <div class="label">Label 2</div>
+      <div class="number" data-count="250">0</div>
+      <div class="label">Label 3</div>
+    </div>
+
+    <!-- Operational Excellence -->
+    <div class="department">
+      <div class="dept-title">Operational Excellence</div>
+      <div class="number" data-count="180">0</div>
+      <div class="label">Label 1</div>
+      <div class="number" data-count="220">0</div>
+      <div class="label">Label 2</div>
+      <div class="number" data-count="300">0</div>
+      <div class="label">Label 3</div>
+    </div>
+
+    <!-- Automation -->
+    <div class="department">
+      <div class="dept-title">Automation</div>
+      <div class="number" data-count="120">0</div>
+      <div class="label">Label 1</div>
+      <div class="number" data-count="180">0</div>
+      <div class="label">Label 2</div>
+      <div class="number" data-count="210">0</div>
+      <div class="label">Label 3</div>
+    </div>
+  </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+  $(document).ready(function () {
+    $('.number').each(function () {
+      var $this = $(this);
+      var countTo = $this.attr('data-count');
+      $({ countNum: 0 }).animate(
+        { countNum: countTo },
+        {
+          duration: 6000,
+          easing: 'swing',
+          step: function () {
+            $this.text(Math.floor(this.countNum));
+          },
+          complete: function () {
+            $this.text(this.countNum);
+          }
+        }
+      );
+    });
+  });
+</script>
