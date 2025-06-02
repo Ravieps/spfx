@@ -3,104 +3,142 @@
     width: 100%;
     background: url('https://via.placeholder.com/1600x400') no-repeat center center;
     background-size: cover;
-    padding: 30px 10px;
+    padding: 40px 10px;
     box-sizing: border-box;
     color: white;
     font-family: 'Segoe UI', sans-serif;
-    overflow-x: auto;
   }
 
-  .stat-bar {
+  .departments-wrapper {
     display: flex;
-    justify-content: center;
-    align-items: center;
-    flex-wrap: nowrap;
-    gap: 40px;
-    min-width: 800px;
-  }
-
-  .stat-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    min-width: 120px;
-    padding: 10px 15px;
-    background: rgba(0, 0, 0, 0.4);
-    border-radius: 8px;
-  }
-
-  .dept-label {
-    font-size: 12px;
-    font-weight: bold;
-    color: #ccc;
-    margin-bottom: 5px;
+    flex-wrap: wrap;
+    justify-content: space-around;
+    align-items: flex-start;
+    gap: 20px;
     text-align: center;
   }
 
+  .department-block {
+    flex: 1 1 30%;
+    min-width: 250px;
+  }
+
+  .department-title {
+    font-size: 20px;
+    font-weight: bold;
+    margin-bottom: 15px;
+    text-transform: uppercase;
+    color: #fff;
+    text-align: center;
+  }
+
+  .stat-row {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .stat-item {
+    flex: 1 1 30%;
+    min-width: 70px;
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 8px;
+    padding: 15px 10px;
+    box-sizing: border-box;
+  }
+
   .number {
-    font-size: 28px;
+    font-size: 24px;
     font-weight: bold;
     color: #fff;
   }
 
-  @media (max-width: 768px) {
-    .stat-bar {
-      flex-wrap: wrap;
-      gap: 20px;
+  .label {
+    font-size: 13px;
+    color: #ccc;
+    margin-top: 5px;
+  }
+
+  @media (max-width: 900px) {
+    .department-block {
+      flex: 1 1 100%;
     }
+
+    .stat-row {
+      justify-content: center;
+    }
+
     .stat-item {
-      min-width: 100px;
+      flex: 1 1 30%;
+      min-width: 90px;
     }
   }
 </style>
 
 <div class="databar">
-  <div class="stat-bar">
+  <div class="departments-wrapper">
+
     <!-- Technology Initiative -->
-    <div class="stat-item">
-      <div class="dept-label">Technology Initiative - Label 1</div>
-      <div class="number" data-count="150">0</div>
-    </div>
-    <div class="stat-item">
-      <div class="dept-label">Technology Initiative - Label 2</div>
-      <div class="number" data-count="200">0</div>
-    </div>
-    <div class="stat-item">
-      <div class="dept-label">Technology Initiative - Label 3</div>
-      <div class="number" data-count="250">0</div>
+    <div class="department-block">
+      <div class="department-title">Technology Initiative</div>
+      <div class="stat-row">
+        <div class="stat-item">
+          <div class="number" data-count="150">0</div>
+          <div class="label">Label 1</div>
+        </div>
+        <div class="stat-item">
+          <div class="number" data-count="200">0</div>
+          <div class="label">Label 2</div>
+        </div>
+        <div class="stat-item">
+          <div class="number" data-count="250">0</div>
+          <div class="label">Label 3</div>
+        </div>
+      </div>
     </div>
 
     <!-- Operational Excellence -->
-    <div class="stat-item">
-      <div class="dept-label">Operational Excellence - Label 1</div>
-      <div class="number" data-count="180">0</div>
-    </div>
-    <div class="stat-item">
-      <div class="dept-label">Operational Excellence - Label 2</div>
-      <div class="number" data-count="220">0</div>
-    </div>
-    <div class="stat-item">
-      <div class="dept-label">Operational Excellence - Label 3</div>
-      <div class="number" data-count="300">0</div>
+    <div class="department-block">
+      <div class="department-title">Operational Excellence</div>
+      <div class="stat-row">
+        <div class="stat-item">
+          <div class="number" data-count="180">0</div>
+          <div class="label">Label 1</div>
+        </div>
+        <div class="stat-item">
+          <div class="number" data-count="220">0</div>
+          <div class="label">Label 2</div>
+        </div>
+        <div class="stat-item">
+          <div class="number" data-count="300">0</div>
+          <div class="label">Label 3</div>
+        </div>
+      </div>
     </div>
 
     <!-- Automation -->
-    <div class="stat-item">
-      <div class="dept-label">Automation - Label 1</div>
-      <div class="number" data-count="120">0</div>
+    <div class="department-block">
+      <div class="department-title">Automation</div>
+      <div class="stat-row">
+        <div class="stat-item">
+          <div class="number" data-count="120">0</div>
+          <div class="label">Label 1</div>
+        </div>
+        <div class="stat-item">
+          <div class="number" data-count="180">0</div>
+          <div class="label">Label 2</div>
+        </div>
+        <div class="stat-item">
+          <div class="number" data-count="210">0</div>
+          <div class="label">Label 3</div>
+        </div>
+      </div>
     </div>
-    <div class="stat-item">
-      <div class="dept-label">Automation - Label 2</div>
-      <div class="number" data-count="180">0</div>
-    </div>
-    <div class="stat-item">
-      <div class="dept-label">Automation - Label 3</div>
-      <div class="number" data-count="210">0</div>
-    </div>
+
   </div>
 </div>
 
-<!-- jQuery CDN -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
 <script>
