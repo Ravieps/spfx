@@ -1,3 +1,6 @@
+<!-- Bootstrap Icons CDN -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+
 <style>
   .databar {
     width: 100%;
@@ -28,6 +31,14 @@
     margin-bottom: 15px;
     text-transform: uppercase;
     color: #fff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .department-title i {
+    font-size: 22px;
   }
 
   .stat-row {
@@ -67,15 +78,15 @@
 
 <div class="databar">
   <div class="departments-wrapper" id="departmentsWrapper">
-    <!-- Dynamic content inserted here -->
+    <!-- Dynamic content will be injected here -->
   </div>
 </div>
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script type="text/javascript">
+<script>
   $(document).ready(function () {
     $.ajax({
-      url: _spPageContextInfo.webAbsoluteUrl + "/_api/web/lists/getbytitle('DepartmentStats')/items?$select=Title,Label,Count",
+      url: _spPageContextInfo.webAbsoluteUrl + "/_api/web/lists/getbytitle('DepartmentStats')/items?$select=Title,Label,Count,Icon",
       method: "GET",
       headers: {
         "Accept": "application/json;odata=verbose"
@@ -83,23 +94,31 @@
       success: function (data) {
         var items = data.d.results;
 
-        // Group by Title
+        // Group by Title and store icon (first one for the department)
         var grouped = {};
         items.forEach(function (item) {
-          if (!grouped[item.Title]) grouped[item.Title] = [];
-          grouped[item.Title].push({
+          if (!grouped[item.Title]) {
+            grouped[item.Title] = {
+              icon: item.Icon,
+              entries: []
+            };
+          }
+          grouped[item.Title].entries.push({
             label: item.Label,
             count: item.Count
           });
         });
 
-        // Build HTML
+        // Build HTML blocks
         for (var dept in grouped) {
+          var iconClass = grouped[dept].icon || '';
           var block = `<div class="department-block">
-            <div class="department-title">${dept}</div>
-            <div class="stat-row">`;
+              <div class="department-title">
+                <i class="bi ${iconClass}"></i> ${dept}
+              </div>
+              <div class="stat-row">`;
 
-          grouped[dept].forEach(function (entry) {
+          grouped[dept].entries.forEach(function (entry) {
             block += `
               <div class="stat-item">
                 <div class="number" data-count="${entry.count}">0</div>
@@ -131,7 +150,7 @@
         });
       },
       error: function (error) {
-        console.log("Error fetching list data: ", error);
+        console.log("Error fetching data: ", error);
       }
     });
   });
