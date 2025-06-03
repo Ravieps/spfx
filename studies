@@ -13,6 +13,20 @@
     font-size: 1em;
     margin-bottom: 20px;
   }
+  .search-filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  .search-filter-bar input,
+  .search-filter-bar select,
+  .search-filter-bar button {
+    padding: 8px;
+    font-size: 0.95em;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+  }
   .case-studies {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -52,59 +66,155 @@
     .case-studies {
       grid-template-columns: 1fr;
     }
+    .search-filter-bar {
+      flex-direction: column;
+    }
+  }
+  .pagination {
+    margin-top: 20px;
+    text-align: center;
+  }
+  .pagination button {
+    background-color: #fff;
+    color: #333;
+    border: 1px solid #ccc;
+    margin: 0 4px;
+    padding: 5px 10px;
+    cursor: pointer;
+  }
+  .pagination button.active {
+    background-color: #6a0dad;
+    color: white;
+    font-weight: bold;
+    border-color: #6a0dad;
   }
 </style>
 
 <div class="case-container">
   <h1>Explore Our Case Studies</h1>
   <p>Discover how our clients solved real business problems with our support and expertise. Click on a title to download the full case study.</p>
-  <div class="case-studies" id="caseStudyContainer">
-    <!-- Case studies will be dynamically inserted here -->
+
+  <div class="search-filter-bar">
+    <input type="text" id="searchInput" placeholder="Search case studies..." />
+    <select id="categoryFilter">
+      <option value="">All Categories</option>
+    </select>
+    <select id="sortOrder">
+      <option value="desc">Newest First</option>
+      <option value="asc">Oldest First</option>
+    </select>
+    <button onclick="clearFilters()">Clear Filters</button>
   </div>
+
+  <div class="case-studies" id="caseStudyContainer"></div>
+  <div class="pagination" id="paginationContainer"></div>
 </div>
 
-<script type="text/javascript">
-  function getCaseStudies() {
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+  var allItems = [];
+  var filteredItems = [];
+  var itemsPerPage = 6;
+
+  function fetchCaseStudies() {
     var siteUrl = _spPageContextInfo.webAbsoluteUrl;
     var listName = "Case Studies";
-
-    var endpoint = siteUrl + "/_api/web/lists/getbytitle('" + listName + "')/items?$select=Title,Description,DocumentLink";
+    var endpoint = siteUrl + "/_api/web/lists/getbytitle('" + listName + "')/items?$select=Title,Description,DocumentLink,Category,PublishedDate&$top=100";
 
     $.ajax({
       url: endpoint,
       method: "GET",
       headers: { "Accept": "application/json; odata=verbose" },
       success: function (data) {
-        var items = data.d.results;
-        var html = "";
-
-        items.forEach(function (item) {
-          var link = item.DocumentLink ? item.DocumentLink.Url : "#";
-          var title = item.Title || "Untitled";
-          var desc = item.Description || "";
-
-          html += `
-            <div class="case-card">
-              <div class="case-label">📄 Case Study</div>
-              <div class="case-title">
-                <a href="${link}" download>${title}</a>
-              </div>
-              <div class="case-desc">${desc}</div>
-            </div>
-          `;
-        });
-
-        document.getElementById("caseStudyContainer").innerHTML = html;
+        allItems = data.d.results.map(item => ({
+          Title: item.Title,
+          Description: item.Description,
+          DocumentLink: item.DocumentLink ? item.DocumentLink.Url : "#",
+          Category: item.Category,
+          PublishedDate: item.PublishedDate
+        }));
+        filteredItems = [...allItems];
+        populateCategoryFilter();
+        applyFilters(); // Initial render
       },
       error: function (error) {
-        console.error("Error fetching case studies: ", error);
-        document.getElementById("caseStudyContainer").innerHTML = "<p>Failed to load case studies. Please try again later.</p>";
+        console.error("Error fetching case studies:", error);
+        $("#caseStudyContainer").html("<p>Failed to load case studies.</p>");
       }
     });
   }
 
-  // Load the case studies after the page is ready
+  function populateCategoryFilter() {
+    var categories = [...new Set(allItems.map(i => i.Category).filter(Boolean))];
+    categories.forEach(cat => {
+      $('#categoryFilter').append(`<option value="${cat}">${cat}</option>`);
+    });
+  }
+
+  function applyFilters() {
+    var keyword = $("#searchInput").val().toLowerCase();
+    var category = $("#categoryFilter").val();
+    var sortOrder = $("#sortOrder").val();
+
+    filteredItems = allItems.filter(item => {
+      var matchesCategory = category ? item.Category === category : true;
+      var matchesSearch = item.Title.toLowerCase().includes(keyword) ||
+        (item.Description && item.Description.toLowerCase().includes(keyword));
+      return matchesCategory && matchesSearch;
+    });
+
+    filteredItems.sort((a, b) => {
+      var dateA = new Date(a.PublishedDate);
+      var dateB = new Date(b.PublishedDate);
+      return sortOrder === "asc" ? dateA - dateB : dateB - dateA;
+    });
+
+    renderPage(1);
+    renderPagination();
+  }
+
+  function renderPage(page) {
+    var start = (page - 1) * itemsPerPage;
+    var end = start + itemsPerPage;
+    var currentItems = filteredItems.slice(start, end);
+
+    var html = "";
+    currentItems.forEach(item => {
+      html += `
+        <div class="case-card">
+          <div class="case-label">📄 ${item.Category || "Case Study"}</div>
+          <div class="case-title">
+            <a href="${item.DocumentLink}" download>${item.Title}</a>
+          </div>
+          <div class="case-desc">${item.Description || ""}</div>
+        </div>
+      `;
+    });
+
+    $("#caseStudyContainer").html(html);
+    $(".pagination button").removeClass("active");
+    $(".pagination button[data-page='" + page + "']").addClass("active");
+  }
+
+  function renderPagination() {
+    var totalPages = Math.ceil(filteredItems.length / itemsPerPage);
+    var html = "";
+    for (let i = 1; i <= totalPages; i++) {
+      html += `<button data-page="${i}" onclick="renderPage(${i})">${i}</button>`;
+    }
+    $("#paginationContainer").html(html);
+    $(".pagination button[data-page='1']").addClass("active");
+  }
+
+  function clearFilters() {
+    $("#searchInput").val("");
+    $("#categoryFilter").val("");
+    $("#sortOrder").val("desc");
+    applyFilters();
+  }
+
   $(document).ready(function () {
-    getCaseStudies();
+    fetchCaseStudies();
+    $("#searchInput, #categoryFilter, #sortOrder").on("input change", applyFilters);
   });
 </script>
