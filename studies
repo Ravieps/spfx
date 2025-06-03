@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Explore Our Case Studies</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f8f8f8;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 {
+      font-size: 2em;
+      color: #1d1d1d;
+      margin-bottom: 10px;
+    }
+    .case-studies {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    .case-card {
+      background-color: #fff;
+      border: 1px solid #ddd;
+      padding: 20px;
+      border-left: 5px solid #6a0dad;
+      transition: box-shadow 0.3s ease;
+    }
+    .case-card:hover {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    .case-label {
+      color: #6a0dad;
+      font-weight: bold;
+      font-size: 0.9em;
+      margin-bottom: 10px;
+    }
+    .case-title a {
+      color: #1a0dab;
+      font-size: 1.1em;
+      font-weight: bold;
+      text-decoration: none;
+    }
+    .case-title a:hover {
+      text-decoration: underline;
+    }
+    .case-desc {
+      font-size: 0.95em;
+      color: #555;
+      margin-top: 8px;
+    }
+    @media (max-width: 768px) {
+      .case-studies {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Explore Our Case Studies</h1>
+  <p>Discover how our clients solved real business problems with our support and expertise. Click on a title to download the full case study.</p>
+
+  <div class="case-studies">
+
+    <div class="case-card">
+      <div class="case-label">📄 Case Study</div>
+      <div class="case-title">
+        <a href="documents/case-study-cruise-line.pdf" download>Keeping a Major Cruise Line Shipshape</a>
+      </div>
+      <div class="case-desc">
+        Learn how we improved a travel company's credit card handling to meet PCI DSS compliance.
+      </div>
+    </div>
+
+    <div class="case-card">
+      <div class="case-label">📄 Case Study</div>
+      <div class="case-title">
+        <a href="documents/case-study-ai-healthcare.pdf" download>Guiding a Healthcare Agency to a Secure AI Journey</a>
+      </div>
+      <div class="case-desc">
+        Discover how we helped a Medicaid agency adopt a secure, AI-based data framework.
+      </div>
+    </div>
+
+    <div class="case-card">
+      <div class="case-label">📄 Case Study</div>
+      <div class="case-title">
+        <a href="documents/case-study-employment.pdf" download>Transforming Employment Services in California</a>
+      </div>
+      <div class="case-desc">
+        Modernizing and streamlining public services to improve efficiency and customer experience.
+      </div>
+    </div>
+
+    <div class="case-card">
+      <div class="case-label">📄 Case Study</div>
+      <div class="case-title">
+        <a href="documents/case-study-hp-analytics.pdf" download>HP Leverages Data, Analytics & AI for M&A</a>
+      </div>
+      <div class="case-desc">
+        Accelerating complex transactions with powerful analytics tools for strategic insights.
+      </div>
+    </div>
+
+  </div>
+
+</body>
+</html>
