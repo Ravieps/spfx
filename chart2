@@ -1,0 +1,340 @@
+<style>
+  .org-chart-container {
+    display: flex;
+    justify-content: center;
+    padding: 20px;
+    overflow-x: auto;
+  }
+
+  .org-chart ul {
+    padding-top: 20px;
+    position: relative;
+    margin: auto;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .org-chart li {
+    text-align: center;
+    position: relative;
+    padding: 20px 10px 0 10px;
+    width: calc(100% / 6 - 20px);
+    min-width: 200px;
+    box-sizing: border-box;
+    list-style: none;
+  }
+
+  @media (max-width: 1024px) {
+    .org-chart li { width: calc(100% / 3 - 20px); }
+  }
+
+  @media (max-width: 600px) {
+    .org-chart li { width: 100%; }
+  }
+
+  .org-chart li::before,
+  .org-chart li::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    border-top: 2px solid #ccc;
+    width: 50%;
+    height: 20px;
+  }
+
+  .org-chart li::before {
+    right: 50%;
+    border-right: 2px solid #ccc;
+  }
+
+  .org-chart li::after {
+    left: 50%;
+    border-left: 2px solid #ccc;
+  }
+
+  .org-chart li:only-child::before,
+  .org-chart li:only-child::after,
+  .org-chart li:first-child::before,
+  .org-chart li:last-child::after {
+    display: none;
+  }
+
+  .org-chart .node {
+    background: #fff;
+    border: 2px solid #0a4b78;
+    border-radius: 10px;
+    padding: 10px;
+    transition: box-shadow 0.3s;
+    cursor: pointer;
+    position: relative;
+  }
+
+  .org-chart .node:hover {
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+  }
+
+  .org-chart .node img {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+  }
+
+  .org-chart .name {
+    font-weight: bold;
+    margin-top: 5px;
+  }
+
+  .org-chart .title {
+    font-size: 12px;
+    color: #555;
+  }
+
+  .toggle-icon {
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    background: #0a4b78;
+    color: #fff;
+    font-size: 12px;
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    line-height: 18px;
+    text-align: center;
+    cursor: pointer;
+  }
+
+  .collapsed > ul {
+    display: none;
+  }
+
+  #bioModal {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background-color: rgba(0,0,0,0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: 9999;
+  }
+
+  #bioModal.show {
+    visibility: visible;
+    opacity: 1;
+  }
+
+  #bioModal .modal-content {
+    background: #fff;
+    padding: 20px 30px;
+    border-radius: 10px;
+    width: 320px;
+    max-width: 90%;
+    text-align: center;
+    position: relative;
+    transform: scale(0.9);
+    transition: transform 0.3s ease;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+  }
+
+  #bioModal.show .modal-content {
+    transform: scale(1);
+  }
+
+  #bioModal .close {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    font-size: 20px;
+    cursor: pointer;
+    font-weight: bold;
+  }
+
+  #searchInput {
+    margin: 20px auto;
+    padding: 8px 12px;
+    width: 250px;
+    display: block;
+    text-align: center;
+  }
+
+  .section-header {
+    width: 100%;
+    text-align: center;
+    font-weight: bold;
+    font-size: 16px;
+    margin: 20px 0 10px;
+    cursor: pointer;
+    color: #0a4b78;
+  }
+</style>
+
+<input type="text" id="searchInput" placeholder="Search team member...">
+
+<div id="orgChartContainer" class="org-chart-container"></div>
+
+<div id="bioModal">
+  <div class="modal-content">
+    <span class="close" onclick="closeModal()">&times;</span>
+    <img id="modalImg" src="" alt="Image" style="width: 100px; border-radius: 50%; margin-bottom: 10px;">
+    <h3 id="modalName"></h3>
+    <p id="modalTitle" style="font-weight: bold;"></p>
+    <p id="modalBio"></p>
+  </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+  $(document).ready(function () {
+    const listName = "Your SharePoint List Name"; // 🔄 Update this
+    const siteUrl = _spPageContextInfo.webAbsoluteUrl;
+    const restUrl = `${siteUrl}/_api/web/lists/getbytitle('${listName}')/items?$top=999`;
+
+    $.ajax({
+      url: restUrl,
+      method: 'GET',
+      headers: { 'Accept': 'application/json;odata=verbose' },
+      success: function (data) {
+        const people = data.d.results;
+        const peopleMap = {};
+
+        people.forEach(p => {
+          peopleMap[p.Title] = {
+            Name: p.Title,
+            Title: p.Designation,
+            ImageURL: p.ImageURL,
+            Bio: p.Bio,
+            Manager: p.Manager?.Title || null,
+            Category: p.Category,
+            Children: []
+          };
+        });
+
+        Object.values(peopleMap).forEach(p => {
+          if (p.Manager && peopleMap[p.Manager]) {
+            peopleMap[p.Manager].Children.push(p);
+          }
+        });
+
+        Object.values(peopleMap).forEach(p => {
+          p.Children.sort((a, b) => a.Name.localeCompare(b.Name));
+        });
+
+        const executive = Object.values(peopleMap).find(p => p.Category === "Executive");
+
+        if (executive) {
+          const chart = $('<div class="org-chart"><ul></ul></div>');
+          const $rootLi = $('<li></li>');
+          const $node = $(`
+            <div class="node" onclick="showModal('${executive.ImageURL}', '${executive.Name}', '${executive.Title}', \`${executive.Bio}\`)">
+              <img src="${executive.ImageURL}" alt="${executive.Title}">
+              <div class="name">${executive.Name}</div>
+              <div class="title">${executive.Title}</div>
+            </div>
+          `);
+          $rootLi.append($node);
+
+          const $sectionsUl = $('<ul></ul>');
+          $sectionsUl.append(renderGroupedSection(executive.Children, "Leadership Team"));
+          $sectionsUl.append(renderGroupedSection(executive.Children, "Team Member"));
+          $rootLi.append($sectionsUl);
+          chart.find('ul').append($rootLi);
+          $('#orgChartContainer').html(chart);
+        }
+
+        // Render rest of hierarchy
+        Object.values(peopleMap).forEach(p => {
+          if (p.Category !== "Executive" && !p.Manager) {
+            const chart = $('<div class="org-chart"><ul></ul></div>');
+            chart.find('ul').append(renderNode(p));
+            $('#orgChartContainer').append(chart);
+          }
+        });
+      }
+    });
+
+    function renderGroupedSection(people, category) {
+      const group = people.filter(p => p.Category === category).sort((a, b) => a.Name.localeCompare(b.Name));
+      const $wrapper = $('<li><div class="section-header">▶ ' + category + '</div></li>');
+      const $ul = $('<ul style="display:none;"></ul>');
+
+      group.forEach(p => {
+        $ul.append(renderNode(p));
+      });
+
+      $wrapper.append($ul);
+
+      $wrapper.find('.section-header').on('click', function () {
+        $ul.slideToggle();
+        const isShown = $ul.is(':visible');
+        $(this).html((isShown ? '▼ ' : '▶ ') + category);
+      });
+
+      return $wrapper;
+    }
+
+    function renderNode(person) {
+      const hasChildren = person.Children.length > 0;
+      const $li = $('<li></li>');
+      const $node = $(`
+        <div class="node" onclick="showModal('${person.ImageURL}', '${person.Name}', '${person.Title}', \`${person.Bio}\`)">
+          <img src="${person.ImageURL}" alt="${person.Title}">
+          <div class="name">${person.Name}</div>
+          <div class="title">${person.Title}</div>
+        </div>
+      `);
+
+      if (hasChildren) {
+        const $toggle = $('<span class="toggle-icon">−</span>');
+        $toggle.on('click', function (e) {
+          e.stopPropagation();
+          $li.toggleClass('collapsed');
+          $toggle.text($li.hasClass('collapsed') ? '+' : '−');
+        });
+        $node.append($toggle);
+      }
+
+      $li.append($node);
+
+      if (hasChildren) {
+        const $ul = $('<ul></ul>');
+        person.Children.forEach(child => {
+          $ul.append(renderNode(child));
+        });
+        $li.append($ul);
+      }
+
+      return $li;
+    }
+
+    $('#searchInput').on('input', function () {
+      const searchTerm = $(this).val().toLowerCase();
+
+      $('.org-chart li').each(function () {
+        const name = $(this).find('.name').text().toLowerCase();
+        const match = name.includes(searchTerm);
+        $(this).toggle(match);
+        if (match) {
+          $(this).parents('li').removeClass('collapsed');
+          $(this).parents('li').find('> .node .toggle-icon').text('−');
+        }
+      });
+    });
+  });
+
+  function showModal(img, name, title, bio) {
+    $('#modalImg').attr('src', img);
+    $('#modalName').text(name);
+    $('#modalTitle').text(title);
+    $('#modalBio').html(bio);
+    $('#bioModal').addClass('show');
+  }
+
+  function closeModal() {
+    $('#bioModal').removeClass('show');
+  }
+</script>
