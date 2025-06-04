@@ -1,275 +1,283 @@
-<!-- Include Required Libraries -->
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-
-<!-- Search & Export Controls -->
-<div style="text-align:center; margin: 20px 0;">
-  <input type="text" id="searchInput" placeholder="Search team member..." style="padding: 8px; width: 240px; border: 1px solid #ccc; border-radius: 5px;">
-  <button onclick="exportAsImage()" style="margin-left: 10px; padding: 8px 12px; background: #4285F4; color: #fff; border: none; border-radius: 4px;">Export as Image</button>
-  <button onclick="exportAsPDF()" style="margin-left: 10px; padding: 8px 12px; background: #34A853; color: #fff; border: none; border-radius: 4px;">Export as PDF</button>
+<div style="text-align: center;">
+  <input type="text" id="searchInput" placeholder="Search team member..." style="margin: 20px; padding: 8px 12px; width: 250px;">
 </div>
 
-<!-- Org Chart Container -->
-<div class="org-chart-container" id="orgChartContainer">
-  <ul class="org-chart" id="orgChartRoot"></ul>
-</div>
+<div id="orgChartContainer" class="org-chart-container"></div>
 
 <!-- Modal -->
 <div id="bioModal">
   <div class="modal-content">
-    <span class="close-btn" onclick="closeModal()">&times;</span>
-    <img id="modalImg" src="" alt="">
-    <div class="name" id="modalName"></div>
-    <div class="title" id="modalTitle"></div>
-    <div class="bio" id="modalBio"></div>
+    <span class="close" onclick="closeModal()">&times;</span>
+    <img id="modalImg" src="" alt="Image" style="width: 100px; border-radius: 50%; margin-bottom: 10px;">
+    <h3 id="modalName"></h3>
+    <p id="modalTitle" style="font-weight: bold;"></p>
+    <p id="modalBio"></p>
   </div>
 </div>
 
-<!-- Styles -->
 <style>
-.org-chart-container {
-  display: flex;
-  justify-content: center;
-  overflow-x: auto;
-  padding: 20px;
-  font-family: 'Segoe UI', sans-serif;
-}
-.org-chart ul {
-  padding-top: 20px;
-  position: relative;
-  display: table;
-  margin: auto;
-}
-.org-chart li {
-  display: table-cell;
-  text-align: center;
-  vertical-align: top;
-  position: relative;
-  padding: 20px 5px 0 5px;
-  transition: all 0.5s;
-}
-.org-chart li::before, .org-chart li::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  border-top: 2px solid #ccc;
-  width: 50%;
-  height: 20px;
-}
-.org-chart li::before { left: -50%; }
-.org-chart li::after { right: -50%; }
-.org-chart li:only-child::before,
-.org-chart li:only-child::after { content: none; }
-.org-chart .node {
-  background: #fff;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  padding: 10px;
-  display: inline-block;
-  position: relative;
-  cursor: pointer;
-  min-width: 120px;
-  transition: box-shadow 0.3s ease;
-}
-.org-chart .node:hover {
-  box-shadow: 0 0 10px rgba(0,0,0,0.2);
-}
-.org-chart .node img {
-  width: 70px;
-  height: 70px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 3px solid #4285F4;
-}
-.org-chart .name {
-  font-weight: bold;
-  margin-top: 6px;
-}
-.org-chart .title {
-  font-size: 0.85em;
-  color: #777;
-}
-.child-branch {
-  display: block;
-  transition: all 0.3s ease;
-}
-.collapsed .child-branch {
-  display: none;
-}
-.toggle-icon {
-  position: absolute;
-  top: -10px;
-  right: -10px;
-  background: #4285F4;
-  color: #fff;
-  font-size: 14px;
-  border-radius: 50%;
-  width: 20px;
-  height: 20px;
-  line-height: 20px;
-  text-align: center;
-  cursor: pointer;
-}
-/* Modal Styling */
-#bioModal {
-  position: fixed;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
-  background-color: rgba(0,0,0,0.6);
-  display: none;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-  transition: all 0.3s ease-in-out;
-}
-#bioModal.show { display: flex; }
-#bioModal .modal-content {
-  background: #fff;
-  padding: 20px 30px;
-  border-radius: 10px;
-  width: 320px;
-  text-align: center;
-  position: relative;
-  transform: scale(0.9);
-  transition: transform 0.3s ease;
-}
-#bioModal.show .modal-content {
-  transform: scale(1);
-}
-#bioModal img {
-  width: 100px;
-  height: 100px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 3px solid #4285F4;
-  margin-bottom: 10px;
-}
-#bioModal .close-btn {
-  position: absolute;
-  top: 8px;
-  right: 12px;
-  font-size: 20px;
-  cursor: pointer;
-  color: #888;
-}
+  .org-chart-container {
+    display: flex;
+    justify-content: center;
+    padding: 20px;
+    overflow-x: auto;
+  }
+
+  .org-chart ul {
+    padding-top: 20px;
+    position: relative;
+    display: table;
+    margin: auto;
+  }
+
+  .org-chart li {
+    display: table-cell;
+    text-align: center;
+    position: relative;
+    padding: 20px 5px 0 5px;
+    vertical-align: top;
+  }
+
+  .org-chart li::before,
+  .org-chart li::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    border-top: 2px solid #ccc;
+    width: 50%;
+    height: 20px;
+  }
+
+  .org-chart li::before {
+    right: 50%;
+    border-right: 2px solid #ccc;
+  }
+
+  .org-chart li::after {
+    left: 50%;
+    border-left: 2px solid #ccc;
+  }
+
+  .org-chart li:only-child::before,
+  .org-chart li:only-child::after {
+    display: none;
+  }
+
+  .org-chart li:only-child {
+    padding-top: 0;
+  }
+
+  .org-chart li:first-child::before,
+  .org-chart li:last-child::after {
+    border: 0 none;
+  }
+
+  .org-chart .node {
+    display: inline-block;
+    background: #fff;
+    border: 2px solid #0a4b78;
+    padding: 10px;
+    border-radius: 10px;
+    cursor: pointer;
+    position: relative;
+    transition: box-shadow 0.3s;
+  }
+
+  .org-chart .node:hover {
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+  }
+
+  .org-chart .node img {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+  }
+
+  .org-chart .name {
+    font-weight: bold;
+    margin-top: 5px;
+  }
+
+  .org-chart .title {
+    font-size: 12px;
+    color: #555;
+  }
+
+  .toggle-icon {
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    background: #0a4b78;
+    color: #fff;
+    font-size: 12px;
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    line-height: 18px;
+    text-align: center;
+    cursor: pointer;
+  }
+
+  .collapsed > ul {
+    display: none;
+  }
+
+  /* Modal styling */
+  #bioModal {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background-color: rgba(0,0,0,0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: 9999;
+  }
+
+  #bioModal.show {
+    visibility: visible;
+    opacity: 1;
+  }
+
+  #bioModal .modal-content {
+    background: #fff;
+    padding: 20px 30px;
+    border-radius: 10px;
+    width: 320px;
+    max-width: 90%;
+    text-align: center;
+    position: relative;
+    transform: scale(0.9);
+    transition: transform 0.3s ease;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+  }
+
+  #bioModal.show .modal-content {
+    transform: scale(1);
+  }
+
+  #bioModal .close {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    font-size: 20px;
+    cursor: pointer;
+    font-weight: bold;
+  }
 </style>
 
-<!-- Script -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
-(function(){
-  const siteUrl = _spPageContextInfo.webAbsoluteUrl;
-  const listName = "TeamOrgChart";
+  $(document).ready(function () {
+    const listName = "Your SharePoint List Name";
+    const siteUrl = _spPageContextInfo.webAbsoluteUrl;
+    const restUrl = `${siteUrl}/_api/web/lists/getbytitle('${listName}')/items?$top=999&$orderby=Title asc`;
 
-  function fetchOrgData(callback) {
     $.ajax({
-      url: `${siteUrl}/_api/web/lists/getbytitle('${listName}')/items?$select=Title,JobTitle,Bio,ImageURL,Manager`,
-      method: "GET",
-      headers: { "Accept": "application/json; odata=verbose" },
-      success: function(data) {
-        callback(data.d.results);
+      url: restUrl,
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json;odata=verbose'
       },
-      error: function(err) {
-        console.error("Error fetching org data", err);
+      success: function (data) {
+        const people = data.d.results;
+
+        const peopleMap = {};
+        people.forEach(p => {
+          peopleMap[p.Title] = {
+            Name: p.Title,
+            Title: p.Designation,
+            ImageURL: p.ImageURL,
+            Bio: p.Bio,
+            Manager: p.Manager?.Title || null,
+            Children: []
+          };
+        });
+
+        Object.values(peopleMap).forEach(p => {
+          if (p.Manager && peopleMap[p.Manager]) {
+            peopleMap[p.Manager].Children.push(p);
+          }
+        });
+
+        // Sort children alphabetically
+        Object.values(peopleMap).forEach(p => {
+          p.Children.sort((a, b) => a.Name.localeCompare(b.Name));
+        });
+
+        const roots = Object.values(peopleMap).filter(p => !p.Manager);
+        const chart = $('<div class="org-chart"><ul></ul></div>');
+        roots.forEach(root => {
+          chart.find('ul').append(renderNode(root));
+        });
+
+        $('#orgChartContainer').html(chart);
       }
     });
-  }
 
-  function buildTree(data) {
-    const map = {};
-    const roots = [];
-    data.forEach(item => {
-      map[item.Title] = { ...item, children: [] };
-    });
-    data.forEach(item => {
-      const mgr = item.Manager;
-      if (mgr && map[mgr]) {
-        map[mgr].children.push(map[item.Title]);
-      } else {
-        roots.push(map[item.Title]);
-      }
-    });
-    Object.values(map).forEach(node => {
-      node.children.sort((a, b) => a.Title.localeCompare(b.Title));
-    });
-    return roots;
-  }
+    function renderNode(person) {
+      const hasChildren = person.Children.length > 0;
+      const $li = $('<li></li>');
 
-  function renderNode(person) {
-    const hasChildren = person.children.length > 0;
-    const childrenHTML = person.children.map(child => renderNode(child)).join('');
-    const childContainer = hasChildren ? `<ul class="child-branch">${childrenHTML}</ul>` : '';
-    const toggleIcon = hasChildren ? `<div class="toggle-icon" onclick="toggleBranch(this)">−</div>` : '';
-    return `
-      <li>
-        <div class="node" onclick="showModal('${person.ImageURL}', '${person.Title}', '${person.JobTitle}', \`${person.Bio.replace(/`/g, "\\`")}\`)">
-          ${toggleIcon}
-          <img src="${person.ImageURL}" alt="${person.Title}">
-          <div class="name">${person.Title}</div>
-          <div class="title">${person.JobTitle}</div>
+      const $node = $(`
+        <div class="node" onclick="showModal('${person.ImageURL}', '${person.Name}', '${person.Title}', \`${person.Bio}\`)">
+          <img src="${person.ImageURL}" alt="${person.Title}" crossorigin="anonymous">
+          <div class="name">${person.Name}</div>
+          <div class="title">${person.Title}</div>
         </div>
-        ${childContainer}
-      </li>
-    `;
-  }
+      `);
 
-  function renderTree(treeData) {
-    const html = treeData.map(renderNode).join('');
-    document.getElementById('orgChartRoot').innerHTML = html;
-  }
+      if (hasChildren) {
+        const $toggle = $('<span class="toggle-icon">−</span>');
+        $toggle.on('click', function (e) {
+          e.stopPropagation();
+          $li.toggleClass('collapsed');
+          $toggle.text($li.hasClass('collapsed') ? '+' : '−');
+        });
+        $node.append($toggle);
+      }
 
-  // Modal functions
-  window.showModal = function(img, name, title, bio) {
+      $li.append($node);
+
+      if (hasChildren) {
+        const $ul = $('<ul></ul>');
+        person.Children.forEach(child => {
+          $ul.append(renderNode(child));
+        });
+        $li.append($ul);
+      }
+
+      return $li;
+    }
+
+    $('#searchInput').on('input', function () {
+      const searchTerm = $(this).val().toLowerCase();
+
+      $('.org-chart li').each(function () {
+        const nodeText = $(this).find('.name').text().toLowerCase();
+        const match = nodeText.includes(searchTerm);
+
+        $(this).toggle(match);
+        if (match) {
+          $(this).parents('li').removeClass('collapsed');
+          $(this).parents('li').find('> .node .toggle-icon').text('−');
+        }
+      });
+    });
+  });
+
+  function showModal(img, name, title, bio) {
     $('#modalImg').attr('src', img);
     $('#modalName').text(name);
     $('#modalTitle').text(title);
     $('#modalBio').html(bio);
-    $('#bioModal').fadeIn().addClass('show');
-  };
-  window.closeModal = function() {
-    $('#bioModal').fadeOut().removeClass('show');
-  };
+    $('#bioModal').addClass('show');
+  }
 
-  // Toggle branch
-  window.toggleBranch = function(el) {
-    const node = el.closest('li');
-    node.classList.toggle('collapsed');
-    el.textContent = node.classList.contains('collapsed') ? '+' : '−';
-    event.stopPropagation();
-  };
-
-  // Search
-  $('#searchInput').on('input', function() {
-    const val = $(this).val().toLowerCase();
-    $('.org-chart .node').each(function() {
-      const name = $(this).find('.name').text().toLowerCase();
-      $(this).closest('li').toggle(name.includes(val));
-    });
-  });
-
-  // Export functions
-  window.exportAsImage = function() {
-    html2canvas(document.getElementById('orgChartContainer')).then(canvas => {
-      const link = document.createElement('a');
-      link.href = canvas.toDataURL('image/png');
-      link.download = 'org-chart.png';
-      link.click();
-    });
-  };
-  window.exportAsPDF = async function() {
-    const canvas = await html2canvas(document.getElementById('orgChartContainer'));
-    const imgData = canvas.toDataURL('image/png');
-    const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF('p', 'pt', 'a4');
-    const width = pdf.internal.pageSize.getWidth();
-    const height = canvas.height * width / canvas.width;
-    pdf.addImage(imgData, 'PNG', 0, 0, width, height);
-    pdf.save('org-chart.pdf');
-  };
-
-  fetchOrgData(data => {
-    const tree = buildTree(data);
-    renderTree(tree);
-  });
-})();
+  function closeModal() {
+    $('#bioModal').removeClass('show');
+  }
 </script>
