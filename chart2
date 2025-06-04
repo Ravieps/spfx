@@ -1,189 +1,147 @@
-<style>
-  .org-chart-container {
-    display: flex;
-    justify-content: center;
-    padding: 20px;
-    overflow-x: auto;
-  }
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Organizational Chart</title>
+  <style>
+    /* Container for the entire org chart */
+    .org-chart-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+    }
 
-  .org-chart ul {
-    padding-top: 20px;
-    position: relative;
-    margin: auto;
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-  }
+    /* Grid container for team members */
+    .team-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 20px;
+      width: 100%;
+      max-width: 1200px;
+      margin-top: 20px;
+    }
 
-  .org-chart li {
-    text-align: center;
-    position: relative;
-    padding: 20px 10px 0 10px;
-    width: calc(100% / 6 - 20px);
-    min-width: 200px;
-    box-sizing: border-box;
-    list-style: none;
-  }
+    /* Individual team member card */
+    .team-member {
+      background: #fff;
+      border: 2px solid #0a4b78;
+      border-radius: 10px;
+      padding: 10px;
+      text-align: center;
+      cursor: pointer;
+      position: relative;
+      transition: box-shadow 0.3s;
+    }
 
-  @media (max-width: 1024px) {
-    .org-chart li { width: calc(100% / 3 - 20px); }
-  }
+    .team-member:hover {
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+    }
 
-  @media (max-width: 600px) {
-    .org-chart li { width: 100%; }
-  }
+    .team-member img {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+    }
 
-  .org-chart li::before,
-  .org-chart li::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    border-top: 2px solid #ccc;
-    width: 50%;
-    height: 20px;
-  }
+    .team-member .name {
+      font-weight: bold;
+      margin-top: 5px;
+    }
 
-  .org-chart li::before {
-    right: 50%;
-    border-right: 2px solid #ccc;
-  }
+    .team-member .title {
+      font-size: 12px;
+      color: #555;
+    }
 
-  .org-chart li::after {
-    left: 50%;
-    border-left: 2px solid #ccc;
-  }
+    /* Toggle icon for collapsing/expanding */
+    .toggle-icon {
+      position: absolute;
+      top: -10px;
+      right: -10px;
+      background: #0a4b78;
+      color: #fff;
+      font-size: 12px;
+      border-radius: 50%;
+      width: 18px;
+      height: 18px;
+      line-height: 18px;
+      text-align: center;
+      cursor: pointer;
+    }
 
-  .org-chart li:only-child::before,
-  .org-chart li:only-child::after,
-  .org-chart li:first-child::before,
-  .org-chart li:last-child::after {
-    display: none;
-  }
+    /* Collapsible section */
+    .collapsible {
+      display: none;
+      margin-top: 10px;
+    }
 
-  .org-chart .node {
-    background: #fff;
-    border: 2px solid #0a4b78;
-    border-radius: 10px;
-    padding: 10px;
-    transition: box-shadow 0.3s;
-    cursor: pointer;
-    position: relative;
-  }
+    .collapsible.show {
+      display: grid;
+    }
 
-  .org-chart .node:hover {
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
-  }
+    /* Modal styles */
+    #bioModal {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background-color: rgba(0,0,0,0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      visibility: hidden;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      z-index: 9999;
+    }
 
-  .org-chart .node img {
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-  }
+    #bioModal.show {
+      visibility: visible;
+      opacity: 1;
+    }
 
-  .org-chart .name {
-    font-weight: bold;
-    margin-top: 5px;
-  }
+    #bioModal .modal-content {
+      background: #fff;
+      padding: 20px 30px;
+      border-radius: 10px;
+      width: 320px;
+      max-width: 90%;
+      text-align: center;
+      position: relative;
+      transform: scale(0.9);
+      transition: transform 0.3s ease;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+    }
 
-  .org-chart .title {
-    font-size: 12px;
-    color: #555;
-  }
+    #bioModal.show .modal-content {
+      transform: scale(1);
+    }
 
-  .toggle-icon {
-    position: absolute;
-    top: -10px;
-    right: -10px;
-    background: #0a4b78;
-    color: #fff;
-    font-size: 12px;
-    border-radius: 50%;
-    width: 18px;
-    height: 18px;
-    line-height: 18px;
-    text-align: center;
-    cursor: pointer;
-  }
+    #bioModal .close {
+      position: absolute;
+      top: 10px;
+      right: 15px;
+      font-size: 20px;
+      cursor: pointer;
+      font-weight: bold;
+    }
 
-  .collapsed > ul {
-    display: none !important;
-  }
-
-  #bioModal {
-    position: fixed;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    background-color: rgba(0,0,0,0.6);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    visibility: hidden;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-    z-index: 9999;
-  }
-
-  #bioModal.show {
-    visibility: visible;
-    opacity: 1;
-  }
-
-  #bioModal .modal-content {
-    background: #fff;
-    padding: 20px 30px;
-    border-radius: 10px;
-    width: 320px;
-    max-width: 90%;
-    text-align: center;
-    position: relative;
-    transform: scale(0.9);
-    transition: transform 0.3s ease;
-    box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
-  }
-
-  #bioModal.show .modal-content {
-    transform: scale(1);
-  }
-
-  #bioModal .close {
-    position: absolute;
-    top: 10px;
-    right: 15px;
-    font-size: 20px;
-    cursor: pointer;
-    font-weight: bold;
-  }
-
-  #searchInput {
-    margin: 20px auto;
-    padding: 8px 12px;
-    width: 250px;
-    display: block;
-    text-align: center;
-  }
-
-  .section-header {
-    width: 100%;
-    text-align: center;
-    font-weight: bold;
-    font-size: 16px;
-    margin: 20px 0 10px;
-    cursor: pointer;
-    color: #0a4b78;
-  }
-
-  .org-chart li > ul {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    padding-left: 0;
-  }
-</style>
+    /* Search input */
+    #searchInput {
+      margin: 20px auto;
+      padding: 8px 12px;
+      width: 250px;
+      display: block;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
 
 <input type="text" id="searchInput" placeholder="Search team member...">
+
 <div id="orgChartContainer" class="org-chart-container"></div>
 
-<!-- Modal -->
 <div id="bioModal">
   <div class="modal-content">
     <span class="close" onclick="closeModal()">&times;</span>
@@ -234,106 +192,74 @@
         const executive = Object.values(peopleMap).find(p => p.Category === "Executive");
 
         if (executive) {
-          const chart = $('<div class="org-chart"><ul></ul></div>');
-          const $rootLi = $('<li></li>');
-          const $node = $(`
-            <div class="node" onclick="showModal('${executive.ImageURL}', '${executive.Name}', '${executive.Title}', \`${executive.Bio}\`)">
-              <img src="${executive.ImageURL}" alt="${executive.Title}">
-              <div class="name">${executive.Name}</div>
-              <div class="title">${executive.Title}</div>
-            </div>
-          `);
-          $rootLi.append($node);
+          const $execDiv = $('<div class="team-member" onclick="showModal(\'' + executive.ImageURL + '\', \'' + executive.Name + '\', \'' + executive.Title + '\', `' + executive.Bio + '`)"></div>');
+          $execDiv.append('<img src="' + executive.ImageURL + '" alt="' + executive.Title + '">');
+          $execDiv.append('<div class="name">' + executive.Name + '</div>');
+          $execDiv.append('<div class="title">' + executive.Title + '</div>');
+          $('#orgChartContainer').append($execDiv);
 
-          const $sectionsUl = $('<ul></ul>');
-          $sectionsUl.append(renderGroupedSection(executive.Children, "Leadership Team"));
-          $sectionsUl.append(renderGroupedSection(executive.Children, "Team Member"));
-          $rootLi.append($sectionsUl);
-          chart.find('ul').append($rootLi);
-          $('#orgChartContainer').html(chart);
-        }
+          const leadershipTeam = executive.Children.filter(p => p.Category === "Leadership Team");
+          const teamMembers = executive.Children.filter(p => p.Category === "Team Member");
 
-        Object.values(peopleMap).forEach(p => {
-          if (p.Category !== "Executive" && !p.Manager) {
-            const chart = $('<div class="org-chart"><ul></ul></div>');
-            chart.find('ul').append(renderNode(p));
-            $('#orgChartContainer').append(chart);
+          if (leadershipTeam.length > 0) {
+            const $leadershipHeader = $('<h3>Leadership Team</h3>');
+            const $leadershipGrid = $('<div class="team-grid"></div>');
+            leadershipTeam.forEach(member => {
+              $leadershipGrid.append(renderTeamMember(member));
+            });
+            $('#orgChartContainer').append($leadershipHeader);
+            $('#orgChartContainer').append($leadershipGrid);
           }
-        });
+
+          if (teamMembers.length > 0) {
+            const $teamHeader = $('<h3>Team Members</h3>');
+            const $teamGrid = $('<div class="team-grid"></div>');
+            teamMembers.forEach(member => {
+              $teamGrid.append(renderTeamMember(member));
+            });
+            $('#orgChartContainer').append($teamHeader);
+            $('#orgChartContainer').append($teamGrid);
+          }
+        }
       }
     });
 
-    function renderGroupedSection(people, category) {
-      const group = people.filter(p => p.Category === category).sort((a, b) => a.Name.localeCompare(b.Name));
-      const $wrapper = $('<li><div class="section-header">▶ ' + category + '</div></li>');
-      const $ul = $('<ul style="display:none;"></ul>');
-
-      group.forEach(p => {
-        $ul.append(renderNode(p));
-      });
-
-      $wrapper.append($ul);
-
-      $wrapper.find('.section-header').on('click', function () {
-        $ul.slideToggle();
-        const isShown = $ul.is(':visible');
-        $(this).html((isShown ? '▼ ' : '▶ ') + category);
-      });
-
-      return $wrapper;
-    }
-
-    function renderNode(person) {
+    function renderTeamMember(person) {
       const hasChildren = person.Children.length > 0;
-      const $li = $('<li></li>');
-      const $node = $(`
-        <div class="node" onclick="showModal('${person.ImageURL}', '${person.Name}', '${person.Title}', \`${person.Bio}\`)">
-          <img src="${person.ImageURL}" alt="${person.Title}">
-          <div class="name">${person.Name}</div>
-          <div class="title">${person.Title}</div>
-        </div>
-      `);
+      const $memberDiv = $('<div class="team-member"></div>');
+      $memberDiv.append('<img src="' + person.ImageURL + '" alt="' + person.Title + '">');
+      $memberDiv.append('<div class="name">' + person.Name + '</div>');
+      $memberDiv.append('<div class="title">' + person.Title + '</div>');
+      $memberDiv.on('click', function () {
+        showModal(person.ImageURL, person.Name, person.Title, person.Bio);
+      });
 
       if (hasChildren) {
         const $toggle = $('<span class="toggle-icon">+</span>');
         $toggle.on('click', function (e) {
           e.stopPropagation();
-          $li.toggleClass('collapsed');
-          $toggle.text($li.hasClass('collapsed') ? '+' : '−');
+          $childGrid.toggleClass('show');
+          $toggle.text($childGrid.hasClass('show') ? '−' : '+');
         });
-        $node.append($toggle);
-        $li.addClass('collapsed'); // Start collapsed
-      }
+        $memberDiv.append($toggle);
 
-      $li.append($node);
-
-      if (hasChildren) {
-        const $ul = $('<ul></ul>').css({
-          display: 'flex',
-          flexWrap: 'wrap',
-          justifyContent: 'center',
-          paddingLeft: 0
-        });
+        const $childGrid = $('<div class="team-grid collapsible"></div>');
         person.Children.forEach(child => {
-          $ul.append(renderNode(child));
+          $childGrid.append(renderTeamMember(child));
         });
-        $li.append($ul);
+        $memberDiv.append($childGrid);
       }
 
-      return $li;
+      return $memberDiv;
     }
 
     $('#searchInput').on('input', function () {
       const searchTerm = $(this).val().toLowerCase();
 
-      $('.org-chart li').each(function () {
+      $('.team-member').each(function () {
         const name = $(this).find('.name').text().toLowerCase();
         const match = name.includes(searchTerm);
         $(this).toggle(match);
-        if (match) {
-          $(this).parents('li').removeClass('collapsed');
-          $(this).parents('li').find('> .node .toggle-icon').text('−');
-        }
       });
     });
   });
@@ -350,3 +276,6 @@
     $('#bioModal').removeClass('show');
   }
 </script>
+
+</body>
+</html>
