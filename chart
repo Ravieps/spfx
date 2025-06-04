@@ -1,0 +1,196 @@
+<style>
+.org-chart-container {
+    font-family: 'Segoe UI', sans-serif;
+    padding: 20px;
+    overflow-x: auto;
+}
+
+.org-chart ul {
+    padding-top: 20px;
+    position: relative;
+    display: table;
+    margin: auto;
+}
+
+.org-chart li {
+    display: table-cell;
+    text-align: center;
+    vertical-align: top;
+    position: relative;
+    padding: 20px 5px 0 5px;
+    transition: all 0.5s;
+}
+
+.org-chart li::before, .org-chart li::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    border-top: 2px solid #ccc;
+    width: 50%;
+    height: 20px;
+}
+
+.org-chart li::before {
+    left: -50%;
+}
+
+.org-chart li::after {
+    right: -50%;
+}
+
+.org-chart li:only-child::before, .org-chart li:only-child::after {
+    content: none;
+}
+
+.org-chart li:only-child {
+    padding-top: 0;
+}
+
+.org-chart .node {
+    display: inline-block;
+    background: #fff;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    padding: 10px;
+    position: relative;
+    transition: box-shadow 0.3s ease;
+    cursor: pointer;
+}
+
+.org-chart .node:hover {
+    box-shadow: 0 0 10px rgba(0,0,0,0.15);
+}
+
+.org-chart .node img {
+    width: 80px;
+    height: 80px;
+    object-fit: cover;
+    border-radius: 50%;
+    border: 3px solid #4285F4;
+}
+
+.org-chart .node .name {
+    font-weight: bold;
+    margin-top: 8px;
+}
+
+.org-chart .node .title {
+    font-size: 0.85em;
+    color: #666;
+}
+
+.tooltip {
+    visibility: hidden;
+    background: #f9f9f9;
+    border: 1px solid #ddd;
+    color: #333;
+    text-align: left;
+    padding: 10px;
+    border-radius: 6px;
+    width: 200px;
+    position: absolute;
+    z-index: 10;
+    top: 110%;
+    left: 50%;
+    transform: translateX(-50%);
+    box-shadow: 0 0 10px rgba(0,0,0,0.15);
+    font-size: 0.85em;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.node:hover .tooltip {
+    visibility: visible;
+    opacity: 1;
+}
+
+.child-branch {
+    display: block;
+    transition: all 0.3s ease-in-out;
+}
+
+.collapsed .child-branch {
+    display: none;
+}
+</style>
+
+<div class="org-chart-container">
+    <ul class="org-chart" id="orgChartRoot"></ul>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+(function(){
+    const siteUrl = _spPageContextInfo.webAbsoluteUrl;
+    const listName = "TeamOrgChart";
+
+    function fetchOrgData(callback) {
+        $.ajax({
+            url: `${siteUrl}/_api/web/lists/getbytitle('${listName}')/items?$select=Id,Title,JobTitle,Bio,ImageURL,Manager`,
+            method: "GET",
+            headers: { "Accept": "application/json; odata=verbose" },
+            success: function(data) {
+                callback(data.d.results);
+            },
+            error: function(error) {
+                console.error("Error fetching org data", error);
+            }
+        });
+    }
+
+    function buildTree(data) {
+        const map = {};
+        const roots = [];
+
+        data.forEach(item => {
+            map[item.Title] = { ...item, children: [] };
+        });
+
+        data.forEach(item => {
+            const managerName = item.Manager;
+            if (managerName && map[managerName]) {
+                map[managerName].children.push(map[item.Title]);
+            } else {
+                roots.push(map[item.Title]);
+            }
+        });
+
+        return roots;
+    }
+
+    function renderNode(person) {
+        const hasChildren = person.children.length > 0;
+        const childrenHTML = person.children.map(child => renderNode(child)).join('');
+        const childContainer = hasChildren ? `<ul class="child-branch">${childrenHTML}</ul>` : '';
+        const nodeHTML = `
+            <li>
+                <div class="node" onclick="toggleCollapse(this)">
+                    <img src="${person.ImageURL}" alt="${person.Title}">
+                    <div class="name">${person.Title}</div>
+                    <div class="title">${person.JobTitle}</div>
+                    <div class="tooltip">${person.Bio}</div>
+                </div>
+                ${childContainer}
+            </li>
+        `;
+        return nodeHTML;
+    }
+
+    function renderTree(treeData) {
+        const html = treeData.map(person => renderNode(person)).join('');
+        document.getElementById('orgChartRoot').innerHTML = html;
+    }
+
+    // Expand/Collapse Toggle
+    window.toggleCollapse = function(el) {
+        const li = el.parentElement;
+        li.classList.toggle('collapsed');
+    }
+
+    // Fetch and render org chart
+    fetchOrgData(function(data) {
+        const tree = buildTree(data);
+        renderTree(tree);
+    });
+})();
+</script>
