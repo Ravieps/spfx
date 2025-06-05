@@ -97,6 +97,7 @@
 
 <div id="orgChartContainer" class="org-chart-wrapper"></div>
 
+<!-- Modal -->
 <div id="bioModal" class="modal">
   <div class="modal-content">
     <span class="close">&times;</span>
@@ -109,7 +110,7 @@
 
 <script type="text/javascript">
   async function getOrgData() {
-    const endpoint = _spPageContextInfo.webAbsoluteUrl + "/_api/web/lists/getbytitle('rapidorg')/items?$select=Id,Title,JobTitle,ImageUrl,Bio,Manager/Title&$expand=Manager";
+    const endpoint = _spPageContextInfo.webAbsoluteUrl + "/_api/web/lists/getbytitle('rapidorg')/items?$select=Id,Title,JobTitle,ImageUrl,Bio,Manager";
     const response = await fetch(endpoint, {
       headers: { "Accept": "application/json;odata=verbose" }
     });
@@ -126,11 +127,11 @@
     });
 
     data.forEach(item => {
-      const managerName = item.Manager?.Title;
+      const managerName = item.Manager;
       if (managerName && map[managerName]) {
         map[managerName].children.push(item);
       } else {
-        tree.push(item); // Top-level (e.g. Executive)
+        tree.push(item); // top-level
       }
     });
 
