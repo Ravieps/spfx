@@ -1,6 +1,6 @@
 <div id="orgChart" style="text-align:center;"></div>
 
-<!-- Modal for Bio -->
+<!-- Bio Modal -->
 <div id="bioModal" style="display:none;position:fixed;z-index:9999;left:0;top:0;width:100%;height:100%;overflow:auto;background-color:rgba(0,0,0,0.7);">
   <div style="background-color:#fff;margin:10% auto;padding:20px;border:1px solid #888;width:300px;border-radius:10px;position:relative;">
     <span class="close" style="position:absolute;top:10px;right:20px;font-size:22px;font-weight:bold;cursor:pointer;">×</span>
@@ -14,10 +14,24 @@
 
 <style>
   .tree-node {
-    position: relative;
     text-align: center;
-    margin: 20px;
+    position: relative;
   }
+
+  .tree-node::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 50%;
+    border-left: 1px solid #ccc;
+    height: 20px;
+    transform: translateX(-50%);
+  }
+
+  .tree-root > .tree-node::before {
+    display: none;
+  }
+
   .tree-card {
     background: #f0f4f7;
     padding: 10px 10px 10px 50px;
@@ -31,9 +45,11 @@
     position: relative;
     transition: all 0.3s ease;
   }
+
   .tree-card:hover {
     background: #e4efff;
   }
+
   .tree-card img {
     position: absolute;
     left: 10px;
@@ -42,37 +58,72 @@
     height: 40px;
     border-radius: 50%;
   }
+
   .tree-card h4 {
     margin: 0;
     font-size: 16px;
     font-weight: bold;
   }
+
   .tree-card p {
     margin: 2px 0 0;
     font-size: 13px;
     color: #333;
   }
+
   .children-container {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 20px;
-    margin-top: 20px;
+    gap: 40px;
+    margin-top: 40px;
+    position: relative;
   }
+
   .manager-row {
     display: flex;
     justify-content: center;
     flex-wrap: wrap;
     gap: 40px;
     margin-top: 40px;
+    position: relative;
   }
-  .children-container.collapsed {
+
+  .children-container::before,
+  .manager-row::before {
+    content: "";
+    position: absolute;
+    top: -20px;
+    left: 50%;
+    height: 20px;
+    border-left: 1px solid #ccc;
+  }
+
+  .tree-branch {
+    position: relative;
+    padding-top: 20px;
+  }
+
+  .tree-branch::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 50%;
+    border-top: 1px solid #ccc;
+    width: 100%;
+    height: 1px;
+    transform: translateX(-50%);
+  }
+
+  .children-container.collapsed,
+  .manager-row.collapsed {
     display: none !important;
   }
-  .toggleable::after {
+
+  .toggle-icon {
     content: '+';
     position: absolute;
-    bottom: -10px;
+    bottom: -12px;
     left: 50%;
     transform: translateX(-50%);
     background: #0b2e59;
@@ -81,10 +132,9 @@
     border-radius: 10px;
     font-size: 12px;
     cursor: pointer;
+    z-index: 10;
   }
-  .toggleable.expanded::after {
-    content: '−';
-  }
+
   .reportee-count {
     position: absolute;
     top: 4px;
@@ -126,10 +176,9 @@
       return roots;
     }
 
-    function createCard(person, isManager = false) {
+    function createCard(person, isManager = false, childrenWrapper = null) {
       const card = document.createElement("div");
       card.className = "tree-card";
-      if (isManager) card.classList.add("toggleable");
 
       const countBadge = isManager && person.children.length > 0
         ? `<div class="reportee-count">${person.children.length}</div>` : '';
@@ -141,60 +190,70 @@
         <p>${person.JobTitle || ''}</p>
       `;
 
-      card.onclick = (e) => {
-        e.stopPropagation();
-        showModal(person);
-      };
-
+      card.addEventListener("click", () => showModal(person));
       return card;
     }
 
     function renderNode(person, options = {}) {
-      const { collapseByDefault = false, verticalLayout = true } = options;
-      const container = document.createElement("div");
-      container.className = "tree-node";
+      const { collapseByDefault = false, verticalLayout = true, isRoot = false } = options;
+      const wrapper = document.createElement("div");
+      wrapper.className = "tree-node";
+      if (isRoot) wrapper.classList.add("tree-root");
 
       const isManager = person.children.length > 0;
+      const cardWrapper = document.createElement("div");
       const card = createCard(person, isManager);
-      container.appendChild(card);
+
+      const node = document.createElement("div");
+      node.className = "tree-branch";
+      node.appendChild(card);
 
       if (isManager) {
-        const childrenWrapper = document.createElement("div");
-        childrenWrapper.className = verticalLayout ? "children-container" : "manager-row";
-        if (collapseByDefault) childrenWrapper.classList.add("collapsed");
+        const toggle = document.createElement("div");
+        toggle.className = "toggle-icon";
+        toggle.textContent = collapseByDefault ? '+' : '−';
+
+        const childContainer = document.createElement("div");
+        childContainer.className = verticalLayout ? "children-container" : "manager-row";
+        if (collapseByDefault) {
+          childContainer.classList.add("collapsed");
+        }
 
         person.children.sort((a, b) => a.Title.localeCompare(b.Title));
         person.children.forEach(child => {
-          childrenWrapper.appendChild(renderNode(child, {
+          childContainer.appendChild(renderNode(child, {
             collapseByDefault: true,
             verticalLayout: true
           }));
         });
 
-        container.appendChild(childrenWrapper);
-
-        // Toggle handler
-        card.addEventListener("click", (e) => {
+        toggle.addEventListener("click", function (e) {
           e.stopPropagation();
-          childrenWrapper.classList.toggle("collapsed");
-          card.classList.toggle("expanded");
+          childContainer.classList.toggle("collapsed");
+          toggle.textContent = childContainer.classList.contains("collapsed") ? '+' : '−';
         });
+
+        node.appendChild(toggle);
+        wrapper.appendChild(node);
+        wrapper.appendChild(childContainer);
+      } else {
+        wrapper.appendChild(node);
       }
 
-      return container;
+      return wrapper;
     }
 
     function renderChart(data) {
       const tree = buildHierarchy(data);
       const executive = tree.find(p => !p.Manager);
-
       const chartContainer = document.getElementById("orgChart");
       chartContainer.innerHTML = "";
 
       if (executive) {
         const execNode = renderNode(executive, {
           collapseByDefault: false,
-          verticalLayout: false
+          verticalLayout: false,
+          isRoot: true
         });
         chartContainer.appendChild(execNode);
       }
