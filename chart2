@@ -1,281 +1,200 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Organizational Chart</title>
-  <style>
-    /* Container for the entire org chart */
-    .org-chart-container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 20px;
-    }
+<style>
+  .org-chart-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-family: "Segoe UI", sans-serif;
+  }
 
-    /* Grid container for team members */
-    .team-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-      gap: 20px;
-      width: 100%;
-      max-width: 1200px;
-      margin-top: 20px;
-    }
+  .tree-node {
+    text-align: center;
+    margin: 10px;
+    position: relative;
+    display: inline-block;
+  }
 
-    /* Individual team member card */
-    .team-member {
-      background: #fff;
-      border: 2px solid #0a4b78;
-      border-radius: 10px;
-      padding: 10px;
-      text-align: center;
-      cursor: pointer;
-      position: relative;
-      transition: box-shadow 0.3s;
-    }
+  .tree-card {
+    background: #003366;
+    color: #fff;
+    padding: 12px 16px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    transition: 0.3s ease;
+  }
 
-    .team-member:hover {
-      box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
-    }
+  .tree-card img {
+    width: 40px;
+    height: 40px;
+    margin-right: 10px;
+    border-radius: 50%;
+    border: 2px solid #fff;
+  }
 
-    .team-member img {
-      width: 60px;
-      height: 60px;
-      border-radius: 50%;
-    }
+  .children-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 10px;
+  }
 
-    .team-member .name {
-      font-weight: bold;
-      margin-top: 5px;
-    }
+  .collapsed > .children-container {
+    display: none;
+  }
 
-    .team-member .title {
-      font-size: 12px;
-      color: #555;
-    }
+  .toggle-btn {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background-color: #ffdc00;
+    color: #111;
+    border-radius: 50%;
+    font-size: 11px;
+    font-weight: bold;
+    width: 22px;
+    height: 22px;
+    line-height: 22px;
+  }
 
-    /* Toggle icon for collapsing/expanding */
-    .toggle-icon {
-      position: absolute;
-      top: -10px;
-      right: -10px;
-      background: #0a4b78;
-      color: #fff;
-      font-size: 12px;
-      border-radius: 50%;
-      width: 18px;
-      height: 18px;
-      line-height: 18px;
-      text-align: center;
-      cursor: pointer;
-    }
+  /* Modal Styles */
+  .modal {
+    display: none;
+    position: fixed;
+    z-index: 999;
+    padding-top: 100px;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.7);
+  }
 
-    /* Collapsible section */
-    .collapsible {
-      display: none;
-      margin-top: 10px;
-    }
+  .modal-content {
+    margin: auto;
+    background: #fff;
+    padding: 20px;
+    width: 400px;
+    border-radius: 10px;
+    text-align: center;
+  }
 
-    .collapsible.show {
-      display: grid;
-    }
+  .modal-content img {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+  }
 
-    /* Modal styles */
-    #bioModal {
-      position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      background-color: rgba(0,0,0,0.6);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      visibility: hidden;
-      opacity: 0;
-      transition: opacity 0.3s ease;
-      z-index: 9999;
-    }
+  .close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+  }
+</style>
 
-    #bioModal.show {
-      visibility: visible;
-      opacity: 1;
-    }
+<div id="orgChartContainer" class="org-chart-wrapper"></div>
 
-    #bioModal .modal-content {
-      background: #fff;
-      padding: 20px 30px;
-      border-radius: 10px;
-      width: 320px;
-      max-width: 90%;
-      text-align: center;
-      position: relative;
-      transform: scale(0.9);
-      transition: transform 0.3s ease;
-      box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
-    }
-
-    #bioModal.show .modal-content {
-      transform: scale(1);
-    }
-
-    #bioModal .close {
-      position: absolute;
-      top: 10px;
-      right: 15px;
-      font-size: 20px;
-      cursor: pointer;
-      font-weight: bold;
-    }
-
-    /* Search input */
-    #searchInput {
-      margin: 20px auto;
-      padding: 8px 12px;
-      width: 250px;
-      display: block;
-      text-align: center;
-    }
-  </style>
-</head>
-<body>
-
-<input type="text" id="searchInput" placeholder="Search team member...">
-
-<div id="orgChartContainer" class="org-chart-container"></div>
-
-<div id="bioModal">
+<div id="bioModal" class="modal">
   <div class="modal-content">
-    <span class="close" onclick="closeModal()">&times;</span>
-    <img id="modalImg" src="" alt="Image" style="width: 100px; border-radius: 50%; margin-bottom: 10px;">
-    <h3 id="modalName"></h3>
-    <p id="modalTitle" style="font-weight: bold;"></p>
+    <span class="close">&times;</span>
+    <div id="modalImage"></div>
+    <h2 id="modalTitle"></h2>
+    <h4 id="modalJobTitle"></h4>
     <p id="modalBio"></p>
   </div>
 </div>
 
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script>
-  $(document).ready(function () {
-    const listName = "Your SharePoint List Name"; // 🔄 Update this
-    const siteUrl = _spPageContextInfo.webAbsoluteUrl;
-    const restUrl = `${siteUrl}/_api/web/lists/getbytitle('${listName}')/items?$top=999`;
+<script type="text/javascript">
+  async function getOrgData() {
+    const endpoint = _spPageContextInfo.webAbsoluteUrl + "/_api/web/lists/getbytitle('rapidorg')/items?$select=Id,Title,JobTitle,ImageUrl,Bio,Manager/Title&$expand=Manager";
+    const response = await fetch(endpoint, {
+      headers: { "Accept": "application/json;odata=verbose" }
+    });
+    const data = await response.json();
+    return data.d.results;
+  }
 
-    $.ajax({
-      url: restUrl,
-      method: 'GET',
-      headers: { 'Accept': 'application/json;odata=verbose' },
-      success: function (data) {
-        const people = data.d.results;
-        const peopleMap = {};
+  function buildTree(data) {
+    const map = {}, tree = [];
 
-        people.forEach(p => {
-          peopleMap[p.Title] = {
-            Name: p.Title,
-            Title: p.Designation,
-            ImageURL: p.ImageURL,
-            Bio: p.Bio,
-            Manager: p.Manager?.Title || null,
-            Category: p.Category,
-            Children: []
-          };
-        });
+    data.forEach(item => {
+      item.children = [];
+      map[item.Title] = item;
+    });
 
-        Object.values(peopleMap).forEach(p => {
-          if (p.Manager && peopleMap[p.Manager]) {
-            peopleMap[p.Manager].Children.push(p);
-          }
-        });
-
-        Object.values(peopleMap).forEach(p => {
-          p.Children.sort((a, b) => a.Name.localeCompare(b.Name));
-        });
-
-        const executive = Object.values(peopleMap).find(p => p.Category === "Executive");
-
-        if (executive) {
-          const $execDiv = $('<div class="team-member" onclick="showModal(\'' + executive.ImageURL + '\', \'' + executive.Name + '\', \'' + executive.Title + '\', `' + executive.Bio + '`)"></div>');
-          $execDiv.append('<img src="' + executive.ImageURL + '" alt="' + executive.Title + '">');
-          $execDiv.append('<div class="name">' + executive.Name + '</div>');
-          $execDiv.append('<div class="title">' + executive.Title + '</div>');
-          $('#orgChartContainer').append($execDiv);
-
-          const leadershipTeam = executive.Children.filter(p => p.Category === "Leadership Team");
-          const teamMembers = executive.Children.filter(p => p.Category === "Team Member");
-
-          if (leadershipTeam.length > 0) {
-            const $leadershipHeader = $('<h3>Leadership Team</h3>');
-            const $leadershipGrid = $('<div class="team-grid"></div>');
-            leadershipTeam.forEach(member => {
-              $leadershipGrid.append(renderTeamMember(member));
-            });
-            $('#orgChartContainer').append($leadershipHeader);
-            $('#orgChartContainer').append($leadershipGrid);
-          }
-
-          if (teamMembers.length > 0) {
-            const $teamHeader = $('<h3>Team Members</h3>');
-            const $teamGrid = $('<div class="team-grid"></div>');
-            teamMembers.forEach(member => {
-              $teamGrid.append(renderTeamMember(member));
-            });
-            $('#orgChartContainer').append($teamHeader);
-            $('#orgChartContainer').append($teamGrid);
-          }
-        }
+    data.forEach(item => {
+      const managerName = item.Manager?.Title;
+      if (managerName && map[managerName]) {
+        map[managerName].children.push(item);
+      } else {
+        tree.push(item); // Top-level (e.g. Executive)
       }
     });
 
-    function renderTeamMember(person) {
-      const hasChildren = person.Children.length > 0;
-      const $memberDiv = $('<div class="team-member"></div>');
-      $memberDiv.append('<img src="' + person.ImageURL + '" alt="' + person.Title + '">');
-      $memberDiv.append('<div class="name">' + person.Name + '</div>');
-      $memberDiv.append('<div class="title">' + person.Title + '</div>');
-      $memberDiv.on('click', function () {
-        showModal(person.ImageURL, person.Name, person.Title, person.Bio);
-      });
+    return tree;
+  }
 
-      if (hasChildren) {
-        const $toggle = $('<span class="toggle-icon">+</span>');
-        $toggle.on('click', function (e) {
+  function renderTree(nodes, container) {
+    nodes.forEach(node => {
+      const nodeDiv = document.createElement("div");
+      nodeDiv.className = "tree-node";
+
+      const card = document.createElement("div");
+      card.className = "tree-card";
+      card.innerHTML = `
+        ${node.ImageUrl ? `<img src="${node.ImageUrl}" alt="${node.Title}">` : ""}
+        <div><strong>${node.Title}</strong><br><small>${node.JobTitle || ""}</small></div>
+      `;
+      card.onclick = () => showModal(node);
+      nodeDiv.appendChild(card);
+
+      if (node.children.length > 0) {
+        const toggle = document.createElement("span");
+        toggle.className = "toggle-btn";
+        toggle.innerText = `+${node.children.length}`;
+        toggle.onclick = (e) => {
           e.stopPropagation();
-          $childGrid.toggleClass('show');
-          $toggle.text($childGrid.hasClass('show') ? '−' : '+');
-        });
-        $memberDiv.append($toggle);
+          nodeDiv.classList.toggle("collapsed");
+        };
+        nodeDiv.appendChild(toggle);
 
-        const $childGrid = $('<div class="team-grid collapsible"></div>');
-        person.Children.forEach(child => {
-          $childGrid.append(renderTeamMember(child));
-        });
-        $memberDiv.append($childGrid);
+        const childrenContainer = document.createElement("div");
+        childrenContainer.className = "children-container";
+        renderTree(node.children.sort((a, b) => a.Title.localeCompare(b.Title)), childrenContainer);
+        nodeDiv.appendChild(childrenContainer);
+        nodeDiv.classList.add("collapsed");
       }
 
-      return $memberDiv;
-    }
-
-    $('#searchInput').on('input', function () {
-      const searchTerm = $(this).val().toLowerCase();
-
-      $('.team-member').each(function () {
-        const name = $(this).find('.name').text().toLowerCase();
-        const match = name.includes(searchTerm);
-        $(this).toggle(match);
-      });
+      container.appendChild(nodeDiv);
     });
-  });
-
-  function showModal(img, name, title, bio) {
-    $('#modalImg').attr('src', img);
-    $('#modalName').text(name);
-    $('#modalTitle').text(title);
-    $('#modalBio').html(bio);
-    $('#bioModal').addClass('show');
   }
 
-  function closeModal() {
-    $('#bioModal').removeClass('show');
+  function showModal(person) {
+    document.getElementById("modalTitle").innerText = person.Title;
+    document.getElementById("modalJobTitle").innerText = person.JobTitle || "";
+    document.getElementById("modalBio").innerText = person.Bio || "";
+    document.getElementById("modalImage").innerHTML = person.ImageUrl
+      ? `<img src="${person.ImageUrl}" alt="${person.Title}">`
+      : "";
+    document.getElementById("bioModal").style.display = "block";
   }
+
+  document.querySelector(".close").onclick = function () {
+    document.getElementById("bioModal").style.display = "none";
+  };
+
+  window.onclick = function (event) {
+    const modal = document.getElementById("bioModal");
+    if (event.target === modal) modal.style.display = "none";
+  };
+
+  (async function () {
+    const listData = await getOrgData();
+    const treeData = buildTree(listData);
+    const container = document.getElementById("orgChartContainer");
+    renderTree(treeData, container);
+  })();
 </script>
-
-</body>
-</html>
