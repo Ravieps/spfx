@@ -1,20 +1,74 @@
-<style>
-  /* Add this inside your existing <style> block or include it */
-  .reportee-count {
-    position: absolute;
-    top: 4px;
-    right: 6px;
-    background: #f44336;
-    color: white;
-    font-size: 11px;
-    padding: 2px 6px;
-    border-radius: 12px;
-  }
+<div id="orgChart" style="text-align:center;"></div>
 
+<!-- Modal for Bio -->
+<div id="bioModal" style="display:none;position:fixed;z-index:9999;left:0;top:0;width:100%;height:100%;overflow:auto;background-color:rgba(0,0,0,0.7);">
+  <div style="background-color:#fff;margin:10% auto;padding:20px;border:1px solid #888;width:300px;border-radius:10px;position:relative;">
+    <span class="close" style="position:absolute;top:10px;right:20px;font-size:22px;font-weight:bold;cursor:pointer;">×</span>
+    <img id="modalImage" src="" style="width:80px;height:80px;border-radius:50%;margin-bottom:10px;" />
+    <h3 id="modalName" style="margin:0;"></h3>
+    <p id="modalTitle" style="margin:0;font-style:italic;"></p>
+    <hr>
+    <p id="modalBio" style="font-size:14px;"></p>
+  </div>
+</div>
+
+<style>
+  .tree-node {
+    position: relative;
+    text-align: center;
+    margin: 20px;
+  }
+  .tree-card {
+    background: #f0f4f7;
+    padding: 10px 10px 10px 50px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    min-width: 180px;
+    max-width: 200px;
+    display: inline-block;
+    text-align: left;
+    cursor: pointer;
+    position: relative;
+    transition: all 0.3s ease;
+  }
+  .tree-card:hover {
+    background: #e4efff;
+  }
+  .tree-card img {
+    position: absolute;
+    left: 10px;
+    top: 10px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+  }
+  .tree-card h4 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: bold;
+  }
+  .tree-card p {
+    margin: 2px 0 0;
+    font-size: 13px;
+    color: #333;
+  }
+  .children-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    margin-top: 20px;
+  }
+  .manager-row {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 40px;
+    margin-top: 40px;
+  }
   .children-container.collapsed {
     display: none !important;
   }
-
   .toggleable::after {
     content: '+';
     position: absolute;
@@ -28,9 +82,18 @@
     font-size: 12px;
     cursor: pointer;
   }
-
   .toggleable.expanded::after {
     content: '−';
+  }
+  .reportee-count {
+    position: absolute;
+    top: 4px;
+    right: 6px;
+    background: #f44336;
+    color: white;
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 12px;
   }
 </style>
 
@@ -86,7 +149,8 @@
       return card;
     }
 
-    function renderNode(person, collapsed = false) {
+    function renderNode(person, options = {}) {
+      const { collapseByDefault = false, verticalLayout = true } = options;
       const container = document.createElement("div");
       container.className = "tree-node";
 
@@ -96,22 +160,20 @@
 
       if (isManager) {
         const childrenWrapper = document.createElement("div");
-        childrenWrapper.className = "children-container";
-        if (collapsed) childrenWrapper.classList.add("collapsed");
+        childrenWrapper.className = verticalLayout ? "children-container" : "manager-row";
+        if (collapseByDefault) childrenWrapper.classList.add("collapsed");
 
         person.children.sort((a, b) => a.Title.localeCompare(b.Title));
-
-        const connector = document.createElement("div");
-        connector.className = "connector-line";
-        childrenWrapper.appendChild(connector);
-
         person.children.forEach(child => {
-          childrenWrapper.appendChild(renderNode(child));
+          childrenWrapper.appendChild(renderNode(child, {
+            collapseByDefault: true,
+            verticalLayout: true
+          }));
         });
 
         container.appendChild(childrenWrapper);
 
-        // Toggle expand/collapse
+        // Toggle handler
         card.addEventListener("click", (e) => {
           e.stopPropagation();
           childrenWrapper.classList.toggle("collapsed");
@@ -122,7 +184,7 @@
       return container;
     }
 
-    function renderOrgChart(data) {
+    function renderChart(data) {
       const tree = buildHierarchy(data);
       const executive = tree.find(p => !p.Manager);
 
@@ -130,26 +192,18 @@
       chartContainer.innerHTML = "";
 
       if (executive) {
-        // Show Executive
-        const execNode = renderNode(executive, false);
-        chartContainer.appendChild(execNode);
-
-        // Manager row under Executive
-        const managerRow = document.createElement("div");
-        managerRow.className = "manager-row";
-
-        executive.children.forEach(manager => {
-          managerRow.appendChild(renderNode(manager, true)); // collapsed = true
+        const execNode = renderNode(executive, {
+          collapseByDefault: false,
+          verticalLayout: false
         });
-
-        chartContainer.appendChild(managerRow);
+        chartContainer.appendChild(execNode);
       }
     }
 
     function showModal(person) {
       document.getElementById("modalImage").src = person.ImageUrl || 'https://via.placeholder.com/80';
       document.getElementById("modalName").textContent = person.Title;
-      document.getElementById("modalTitle").textContent = person.JobTitle;
+      document.getElementById("modalTitle").textContent = person.JobTitle || '';
       document.getElementById("modalBio").textContent = person.Bio || "No bio available.";
       document.getElementById("bioModal").style.display = "block";
     }
@@ -164,6 +218,6 @@
       }
     };
 
-    getData(renderOrgChart);
+    getData(renderChart);
   });
 </script>
