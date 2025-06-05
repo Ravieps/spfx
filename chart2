@@ -7,10 +7,9 @@
   }
 
   .tree-node {
-    text-align: center;
-    margin: 10px;
     position: relative;
-    display: inline-block;
+    text-align: center;
+    margin: 20px 10px;
   }
 
   .tree-card {
@@ -18,16 +17,24 @@
     color: #fff;
     padding: 12px 16px;
     border-radius: 8px;
+    width: 240px;
     display: flex;
     align-items: center;
+    justify-content: flex-start;
+    gap: 10px;
+    margin: 0 auto;
     cursor: pointer;
-    transition: 0.3s ease;
+    box-sizing: border-box;
+    transition: background 0.3s ease;
+  }
+
+  .tree-card:hover {
+    background: #004080;
   }
 
   .tree-card img {
     width: 40px;
     height: 40px;
-    margin-right: 10px;
     border-radius: 50%;
     border: 2px solid #fff;
   }
@@ -36,17 +43,47 @@
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
-    margin-top: 10px;
+    margin-top: 30px;
+    position: relative;
   }
 
-  .collapsed > .children-container {
+  /* Connect lines between nodes */
+  .tree-node::before {
+    content: '';
+    position: absolute;
+    top: -20px;
+    left: 50%;
+    border-left: 2px solid #999;
+    height: 20px;
+  }
+
+  .children-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 20px;
+    border-top: 2px solid #999;
+  }
+
+  .tree-node:first-child::before {
+    border-left: none;
+  }
+
+  .tree-node:last-child::before {
+    border-left: none;
+  }
+
+  .tree-node:only-child::before,
+  .tree-node:only-child .children-container::before {
     display: none;
   }
 
   .toggle-btn {
     position: absolute;
-    top: -8px;
-    right: -8px;
+    top: -10px;
+    right: -10px;
     background-color: #ffdc00;
     color: #111;
     border-radius: 50%;
@@ -55,6 +92,7 @@
     width: 22px;
     height: 22px;
     line-height: 22px;
+    z-index: 1;
   }
 
   /* Modal Styles */
@@ -155,18 +193,14 @@
       if (node.children.length > 0) {
         const toggle = document.createElement("span");
         toggle.className = "toggle-btn";
-        toggle.innerText = `+${node.children.length}`;
-        toggle.onclick = (e) => {
-          e.stopPropagation();
-          nodeDiv.classList.toggle("collapsed");
-        };
+        toggle.innerText = node.children.length;
         nodeDiv.appendChild(toggle);
 
         const childrenContainer = document.createElement("div");
         childrenContainer.className = "children-container";
         renderTree(node.children.sort((a, b) => a.Title.localeCompare(b.Title)), childrenContainer);
         nodeDiv.appendChild(childrenContainer);
-        nodeDiv.classList.add("collapsed");
+        // NOTE: Expanded by default — no collapse class!
       }
 
       container.appendChild(nodeDiv);
