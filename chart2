@@ -1,112 +1,36 @@
-<div id="orgChart" class="org-chart-container"></div>
-
-<!-- Modal for Bio -->
-<div id="bioModal" class="modal">
-  <div class="modal-content">
-    <span class="close">&times;</span>
-    <img id="modalImage" />
-    <h3 id="modalName"></h3>
-    <h4 id="modalTitle"></h4>
-    <p id="modalBio"></p>
-  </div>
-</div>
-
 <style>
-  .org-chart-container {
-    text-align: center;
-    padding: 40px;
-    font-family: 'Segoe UI', sans-serif;
-  }
-
-  .tree-node {
-    display: inline-block;
-    vertical-align: top;
-    text-align: center;
-    margin: 20px;
-    position: relative;
-    min-width: 150px;
-  }
-
-  .tree-card {
-    background-color: #0b2e59;
-    color: white;
-    padding: 10px;
-    border-radius: 6px;
-    cursor: pointer;
-    width: 160px;
-    transition: background 0.3s ease;
-  }
-
-  .tree-card:hover {
-    background-color: #155ca3;
-  }
-
-  .tree-card img {
-    width: 40px;
-    height: 40px;
-    object-fit: cover;
-    border-radius: 50%;
-    margin-right: 10px;
-    float: left;
-  }
-
-  .tree-card h4, .tree-card p {
-    margin: 0;
-    font-size: 13px;
-    text-align: left;
-  }
-
-  .children-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    position: relative;
-    margin-top: 30px;
-  }
-
-  .connector-line {
-    width: 2px;
-    height: 30px;
-    background-color: #999;
+  /* Add this inside your existing <style> block or include it */
+  .reportee-count {
     position: absolute;
-    top: -30px;
+    top: 4px;
+    right: 6px;
+    background: #f44336;
+    color: white;
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 12px;
+  }
+
+  .children-container.collapsed {
+    display: none !important;
+  }
+
+  .toggleable::after {
+    content: '+';
+    position: absolute;
+    bottom: -10px;
     left: 50%;
     transform: translateX(-50%);
-  }
-
-  .manager-row {
-    display: flex;
-    justify-content: center;
-    flex-wrap: wrap;
-  }
-
-  .modal {
-    display: none;
-    position: fixed;
-    z-index: 1000;
-    left: 0; top: 0; width: 100%; height: 100%;
-    background: rgba(0,0,0,0.7);
-  }
-
-  .modal-content {
-    background: white;
-    padding: 20px;
-    margin: 80px auto;
+    background: #0b2e59;
+    color: white;
+    padding: 2px 6px;
     border-radius: 10px;
-    width: 400px;
-    text-align: center;
-  }
-
-  .modal-content img {
-    width: 80px;
-    border-radius: 50%;
-    margin-bottom: 10px;
-  }
-
-  .close {
-    float: right;
-    font-size: 22px;
+    font-size: 12px;
     cursor: pointer;
+  }
+
+  .toggleable.expanded::after {
+    content: '−';
   }
 </style>
 
@@ -119,60 +43,63 @@
       const url = `${siteUrl}/_api/web/lists/getbytitle('${listName}')/items?$select=Title,JobTitle,Manager,ImageUrl,Bio&$top=5000`;
       fetch(url, {
         method: "GET",
-        headers: {
-          "Accept": "application/json;odata=verbose"
-        }
+        headers: { "Accept": "application/json;odata=verbose" }
       })
       .then(res => res.json())
-      .then(data => {
-        const items = data.d.results;
-        callback(items);
-      });
+      .then(data => callback(data.d.results));
     }
 
     function buildHierarchy(data) {
       const map = {}, roots = [];
-
-      data.forEach(person => {
-        person.children = [];
-        map[person.Title] = person;
-      });
-
+      data.forEach(person => { person.children = []; map[person.Title] = person; });
       data.forEach(person => {
         if (person.Manager) {
-          const manager = map[person.Manager];
-          if (manager) manager.children.push(person);
+          const mgr = map[person.Manager];
+          if (mgr) mgr.children.push(person);
         } else {
           roots.push(person);
         }
       });
-
       return roots;
     }
 
-    function createCard(person) {
+    function createCard(person, isManager = false) {
       const card = document.createElement("div");
       card.className = "tree-card";
-      card.onclick = () => showModal(person);
+      if (isManager) card.classList.add("toggleable");
+
+      const countBadge = isManager && person.children.length > 0
+        ? `<div class="reportee-count">${person.children.length}</div>` : '';
+
       card.innerHTML = `
+        ${countBadge}
         <img src="${person.ImageUrl || 'https://via.placeholder.com/40'}" />
         <h4>${person.Title}</h4>
         <p>${person.JobTitle || ''}</p>
       `;
+
+      card.onclick = (e) => {
+        e.stopPropagation();
+        showModal(person);
+      };
+
       return card;
     }
 
-    function renderNode(person) {
+    function renderNode(person, collapsed = false) {
       const container = document.createElement("div");
       container.className = "tree-node";
 
-      const card = createCard(person);
+      const isManager = person.children.length > 0;
+      const card = createCard(person, isManager);
       container.appendChild(card);
 
-      if (person.children.length > 0) {
-        person.children.sort((a, b) => a.Title.localeCompare(b.Title));
+      if (isManager) {
         const childrenWrapper = document.createElement("div");
         childrenWrapper.className = "children-container";
+        if (collapsed) childrenWrapper.classList.add("collapsed");
+
+        person.children.sort((a, b) => a.Title.localeCompare(b.Title));
 
         const connector = document.createElement("div");
         connector.className = "connector-line";
@@ -183,6 +110,13 @@
         });
 
         container.appendChild(childrenWrapper);
+
+        // Toggle expand/collapse
+        card.addEventListener("click", (e) => {
+          e.stopPropagation();
+          childrenWrapper.classList.toggle("collapsed");
+          card.classList.toggle("expanded");
+        });
       }
 
       return container;
@@ -190,24 +124,25 @@
 
     function renderOrgChart(data) {
       const tree = buildHierarchy(data);
-
       const executive = tree.find(p => !p.Manager);
-      const managerContainer = document.createElement("div");
-      managerContainer.className = "manager-row";
 
       const chartContainer = document.getElementById("orgChart");
       chartContainer.innerHTML = "";
 
       if (executive) {
-        const execNode = renderNode(executive);
+        // Show Executive
+        const execNode = renderNode(executive, false);
         chartContainer.appendChild(execNode);
 
+        // Manager row under Executive
+        const managerRow = document.createElement("div");
+        managerRow.className = "manager-row";
+
         executive.children.forEach(manager => {
-          const managerNode = renderNode(manager);
-          managerContainer.appendChild(managerNode);
+          managerRow.appendChild(renderNode(manager, true)); // collapsed = true
         });
 
-        chartContainer.appendChild(managerContainer);
+        chartContainer.appendChild(managerRow);
       }
     }
 
