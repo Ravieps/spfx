@@ -1,11 +1,9 @@
 <style>
-/* Org Chart Layout */
 .org-chart-wrapper {
   display: flex;
   flex-direction: column;
   align-items: center;
   padding: 30px;
-  position: relative;
 }
 .search-container {
   text-align: center;
@@ -21,7 +19,6 @@
 .org-node {
   text-align: center;
   margin: 10px 0;
-  position: relative;
 }
 .card {
   border: 1px solid #ccc;
@@ -67,7 +64,6 @@
   justify-content: center;
   flex-wrap: wrap;
   margin-top: 20px;
-  position: relative;
 }
 .toggle-btn {
   font-size: 18px;
@@ -80,14 +76,13 @@
   flex-direction: column;
   align-items: center;
   margin: 0 20px;
-  position: relative;
 }
 .manager-children {
   display: flex;
   flex-direction: column;
   align-items: center;
   margin-top: 10px;
-  position: relative;
+  display: none;
 }
 
 /* Modal */
@@ -130,24 +125,13 @@
   from { transform: translateY(-50px); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
 }
-#svgConnectors {
-  position: absolute;
-  top: 0;
-  left: 0;
-  z-index: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-}
 </style>
 
 <div class="search-container">
   <input type="text" id="searchInput" placeholder="Search by name..." />
 </div>
 
-<div id="orgChartContainer" class="org-chart-wrapper">
-  <svg id="svgConnectors"></svg>
-</div>
+<div id="orgChartContainer" class="org-chart-wrapper"></div>
 
 <div id="bioModal" class="bio-modal">
   <div class="modal-content">
@@ -168,23 +152,34 @@
 
   $(document).ready(function () {
     fetchData();
+
     $('.close-btn').click(() => $('#bioModal').removeClass('show'));
     $(window).click(e => {
       if ($(e.target).is('#bioModal')) $('#bioModal').removeClass('show');
     });
+
     $('#searchInput').on('input', function () {
       const query = $(this).val().toLowerCase();
       if (!query) {
         renderOrgChart(allPeople);
         return;
       }
-      const filtered = {};
-      for (let key in allPeople) {
-        if (allPeople[key].name.toLowerCase().includes(query)) {
-          filtered[key] = allPeople[key];
+
+      const matched = {};
+      const addWithHierarchy = (personName) => {
+        const person = allPeople[personName];
+        if (!person || matched[personName]) return;
+        matched[personName] = person;
+        if (person.manager) addWithHierarchy(person.manager);
+      };
+
+      Object.keys(allPeople).forEach(name => {
+        if (name.toLowerCase().includes(query)) {
+          addWithHierarchy(name);
         }
-      }
-      renderOrgChart(filtered, true);
+      });
+
+      renderOrgChart(matched);
     });
   });
 
@@ -227,9 +222,7 @@
   }
 
   function renderOrgChart(people) {
-    $('#orgChartContainer').find('.org-node, .manager-team').remove();
-    $('#svgConnectors').empty();
-
+    $('#orgChartContainer').empty();
     const exec = Object.values(people).find(p => !p.manager);
     if (!exec) return;
 
@@ -238,7 +231,8 @@
     $chart.append($execNode);
 
     const $managerLine = $('<div class="manager-team"></div>');
-    const managers = exec.children.map(name => people[name])
+    const managers = exec.children
+      .map(name => people[name])
       .filter(Boolean)
       .sort((a, b) => a.order - b.order);
 
@@ -250,32 +244,27 @@
       const $childrenWrap = $('<div class="manager-children" id="team-' + manager.name.replace(/\s+/g, '') + '"></div>');
       $managerBlock.append($childrenWrap);
       $managerLine.append($managerBlock);
-    });
 
-    $chart.append($managerLine);
-
-    managers.forEach(manager => {
-      const reportees = manager.children.map(name => people[name])
+      const reportees = manager.children
+        .map(name => people[name])
         .filter(Boolean)
         .sort((a, b) => a.name.localeCompare(b.name));
 
-      const $teamWrap = $('#team-' + manager.name.replace(/\s+/g, ''));
       reportees.forEach(reportee => {
         const $repCard = createCard(reportee, people);
-        $teamWrap.append($repCard);
+        $childrenWrap.append($repCard);
       });
-      $teamWrap.hide();
 
       $('#btn-' + manager.name.replace(/\s+/g, '')).click(function () {
         const $btn = $(this);
-        $teamWrap.slideToggle(300, function () {
-          $btn.text($teamWrap.is(':visible') ? '−' : '+');
-          drawConnections();
+        $childrenWrap.slideToggle(300, function () {
+          const isVisible = $childrenWrap.is(':visible');
+          $btn.text(isVisible ? '−' : '+');
         });
       });
     });
 
-    setTimeout(drawConnections, 500);
+    $chart.append($managerLine);
   }
 
   function createCard(person, people, isManager = false) {
@@ -308,39 +297,6 @@
     $('#modalJobTitle').text(person.jobTitle);
     $('#modalBio').text(person.bio);
     $('#bioModal').addClass('show');
-  }
-
-  function drawConnections() {
-    const svg = $('#svgConnectors');
-    svg.empty();
-    $('.org-node').each(function () {
-      const fromId = $(this).attr('id');
-      const fromNode = $(this).find('.card');
-      const fromRect = fromNode[0].getBoundingClientRect();
-      const fromCenterX = fromRect.left + fromRect.width / 2 + window.scrollX;
-      const fromBottomY = fromRect.bottom + window.scrollY;
-      const personName = fromNode.data('name');
-      const person = allPeople[personName];
-      if (!person || !person.children) return;
-      person.children.forEach(childName => {
-        const childId = '#node-' + childName.replace(/\s+/g, '');
-        const $toNode = $(childId);
-        if (!$toNode.length) return;
-        const toRect = $toNode.find('.card')[0].getBoundingClientRect();
-        const toCenterX = toRect.left + toRect.width / 2 + window.scrollX;
-        const toTopY = toRect.top + window.scrollY;
-        const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-        $(line).attr({
-          x1: fromCenterX,
-          y1: fromBottomY,
-          x2: toCenterX,
-          y2: toTopY,
-          stroke: "#ccc",
-          "stroke-width": 2
-        });
-        svg.append(line);
-      });
-    });
   }
 })();
 </script>
