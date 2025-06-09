@@ -240,9 +240,9 @@
     managers.forEach(manager => {
       const $managerBlock = $('<div class="manager-block"></div>');
       const $managerNode = createCard(manager, people, true);
-      $managerBlock.append($managerNode);
+      const $childrenWrap = $('<div class="manager-children"></div>');
 
-      const $childrenWrap = $('<div class="manager-children" id="team-' + manager.name.replace(/\s+/g, '') + '"></div>');
+      $managerBlock.append($managerNode);
       $managerBlock.append($childrenWrap);
       $managerLine.append($managerBlock);
 
@@ -258,7 +258,9 @@
 
       // Expanded by default
       $childrenWrap.show();
-      $('#btn-' + manager.name.replace(/\s+/g, '')).text('−').click(function () {
+
+      // Attach toggle event (NO ID)
+      $managerNode.find('.toggle-btn').click(function (e) {
         const $btn = $(this);
         const isVisible = $childrenWrap.is(':visible');
         if (isVisible) {
@@ -276,7 +278,7 @@
 
   function createCard(person, people, isManager = false) {
     const $card = $(`
-      <div class="org-node" id="node-${person.name.replace(/\s+/g, '')}">
+      <div class="org-node">
         <div class="card" data-name="${person.name}">
           <img src="${person.image}" />
           <div class="name">${person.name}</div>
@@ -287,7 +289,7 @@
 
     if (isManager && person.children.length > 0) {
       $card.find('.card').append(`<div class="count-badge">${person.children.length}</div>`);
-      $card.append(`<div class="toggle-btn" id="btn-${person.name.replace(/\s+/g, '')}">−</div>`);
+      $card.append(`<div class="toggle-btn">−</div>`);
     }
 
     $card.find('.card').click(function (e) {
