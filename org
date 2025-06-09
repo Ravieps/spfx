@@ -58,6 +58,7 @@
   justify-content: center;
   flex-wrap: wrap;
   margin-top: 20px;
+  position: relative;
 }
 
 .toggle-btn {
@@ -71,6 +72,46 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  margin-bottom: 30px;
+}
+
+.manager-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0 20px;
+  position: relative;
+}
+
+.manager-children {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 10px;
+  position: relative;
+}
+
+.connection-line {
+  width: 2px;
+  height: 20px;
+  background-color: #ccc;
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.line-horizontal {
+  height: 2px;
+  background-color: #ccc;
+  position: absolute;
+  top: 0;
+}
+
+.line-vertical {
+  width: 2px;
+  background-color: #ccc;
+  position: absolute;
 }
 
 /* Modal Styles */
@@ -81,8 +122,16 @@
   left: 0; top: 0;
   width: 100%; height: 100%;
   background-color: rgba(0,0,0,0.7);
-  animation: fadeIn 0.3s ease-in;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease;
 }
+.bio-modal.show {
+  display: block;
+  opacity: 1;
+  visibility: visible;
+}
+
 .modal-content {
   background: white;
   margin: 10% auto;
@@ -105,10 +154,6 @@
 @keyframes slideIn {
   from { transform: translateY(-50px); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
-}
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
 }
 </style>
 
@@ -133,10 +178,9 @@
   $(document).ready(function () {
     fetchData();
 
-    // Modal close behavior
-    $('.close-btn').click(() => $('#bioModal').fadeOut());
+    $('.close-btn').click(() => $('#bioModal').removeClass('show'));
     $(window).click(e => {
-      if ($(e.target).is('#bioModal')) $('#bioModal').fadeOut();
+      if ($(e.target).is('#bioModal')) $('#bioModal').removeClass('show');
     });
   });
 
@@ -183,18 +227,23 @@
 
   function renderOrgChart(people) {
     const exec = Object.values(people).find(p => !p.manager);
-
     const $chart = $('#orgChartContainer');
+
     const $execNode = createCard(exec, people);
     $chart.append($execNode);
 
+    const $managerLine = $('<div class="manager-team"></div>');
     const managers = exec.children.map(name => people[name])
       .sort((a, b) => a.order - b.order);
 
-    const $managerLine = $('<div class="manager-team"></div>');
     managers.forEach(manager => {
+      const $managerBlock = $('<div class="manager-block"></div>');
       const $managerNode = createCard(manager, people, true);
-      $managerLine.append($managerNode);
+      $managerBlock.append($managerNode);
+
+      const $childrenWrap = $('<div class="manager-children" id="team-' + manager.name.replace(/\s+/g, '') + '"></div>');
+      $managerBlock.append($childrenWrap);
+      $managerLine.append($managerBlock);
     });
 
     $chart.append($managerLine);
@@ -203,13 +252,12 @@
       const reportees = manager.children.map(name => people[name])
         .sort((a, b) => a.name.localeCompare(b.name));
 
-      const $teamWrap = $('<div class="team-wrapper" id="team-' + manager.name.replace(/\s+/g, '') + '"></div>');
+      const $teamWrap = $('#team-' + manager.name.replace(/\s+/g, ''));
       reportees.forEach(reportee => {
         const $repCard = createCard(reportee, people);
         $teamWrap.append($repCard);
       });
 
-      $chart.append($teamWrap);
       $teamWrap.hide();
 
       $('#btn-' + manager.name.replace(/\s+/g, '')).click(function () {
@@ -251,7 +299,7 @@
     $('#modalTitle').text(person.name);
     $('#modalJobTitle').text(person.jobTitle);
     $('#modalBio').text(person.bio);
-    $('#bioModal').fadeIn();
+    $('#bioModal').addClass('show');
   }
 })();
 </script>
