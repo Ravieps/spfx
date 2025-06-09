@@ -1,0 +1,257 @@
+<style>
+.org-chart-wrapper {
+  display: flex;
+  justify-content: center;
+  padding: 40px;
+  flex-direction: column;
+  align-items: center;
+}
+
+.org-node {
+  text-align: center;
+  margin: 20px;
+  position: relative;
+}
+
+.card {
+  border: 1px solid #ccc;
+  border-radius: 12px;
+  padding: 15px;
+  background: white;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  display: inline-block;
+  width: 180px;
+  cursor: pointer;
+  position: relative;
+  transition: transform 0.3s ease;
+}
+.card:hover {
+  transform: scale(1.05);
+}
+.card img {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.card .name {
+  font-weight: bold;
+  margin-top: 10px;
+}
+.card .title {
+  font-size: 13px;
+  color: #666;
+}
+.card .count-badge {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  background: #1e90ff;
+  color: white;
+  font-size: 12px;
+  padding: 5px 8px;
+  border-radius: 50%;
+}
+
+.manager-team {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 20px;
+}
+
+.toggle-btn {
+  font-size: 18px;
+  color: #0078d4;
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+.team-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Modal Styles */
+.bio-modal {
+  display: none;
+  position: fixed;
+  z-index: 999;
+  left: 0; top: 0;
+  width: 100%; height: 100%;
+  background-color: rgba(0,0,0,0.7);
+  animation: fadeIn 0.3s ease-in;
+}
+.modal-content {
+  background: white;
+  margin: 10% auto;
+  padding: 20px;
+  width: 300px;
+  border-radius: 10px;
+  text-align: center;
+  animation: slideIn 0.3s ease;
+}
+.modal-content img {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+}
+.close-btn {
+  float: right;
+  font-size: 24px;
+  cursor: pointer;
+}
+@keyframes slideIn {
+  from { transform: translateY(-50px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+</style>
+
+<div id="orgChartContainer" class="org-chart-wrapper"></div>
+
+<div id="bioModal" class="bio-modal">
+  <div class="modal-content">
+    <span class="close-btn">&times;</span>
+    <img id="modalImage" />
+    <h2 id="modalTitle"></h2>
+    <h4 id="modalJobTitle"></h4>
+    <p id="modalBio"></p>
+  </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script type="text/javascript">
+(function () {
+  const siteUrl = _spPageContextInfo.webAbsoluteUrl;
+  const listName = 'rapidorg';
+
+  $(document).ready(function () {
+    fetchData();
+
+    // Modal close behavior
+    $('.close-btn').click(() => $('#bioModal').fadeOut());
+    $(window).click(e => {
+      if ($(e.target).is('#bioModal')) $('#bioModal').fadeOut();
+    });
+  });
+
+  function fetchData() {
+    const url = siteUrl + "/_api/web/lists/getbytitle('" + listName + "')/items?$select=Title,JobTitle,Manager/Title,ImageUrl,Bio,Order&$expand=Manager&$orderby=Order asc";
+
+    $.ajax({
+      url: url,
+      type: "GET",
+      headers: { "Accept": "application/json;odata=verbose" },
+      success: function (data) {
+        const items = data.d.results;
+        const people = processPeople(items);
+        renderOrgChart(people);
+      },
+      error: function (err) {
+        console.error("Error fetching data from SharePoint list:", err);
+      }
+    });
+  }
+
+  function processPeople(items) {
+    let people = {};
+    items.forEach(person => {
+      people[person.Title] = {
+        name: person.Title,
+        jobTitle: person.JobTitle,
+        image: person.ImageUrl,
+        bio: person.Bio,
+        order: person.Order,
+        manager: person.Manager ? person.Manager.Title : null,
+        children: []
+      };
+    });
+
+    Object.values(people).forEach(person => {
+      if (person.manager && people[person.manager]) {
+        people[person.manager].children.push(person.name);
+      }
+    });
+
+    return people;
+  }
+
+  function renderOrgChart(people) {
+    const exec = Object.values(people).find(p => !p.manager);
+
+    const $chart = $('#orgChartContainer');
+    const $execNode = createCard(exec, people);
+    $chart.append($execNode);
+
+    const managers = exec.children.map(name => people[name])
+      .sort((a, b) => a.order - b.order);
+
+    const $managerLine = $('<div class="manager-team"></div>');
+    managers.forEach(manager => {
+      const $managerNode = createCard(manager, people, true);
+      $managerLine.append($managerNode);
+    });
+
+    $chart.append($managerLine);
+
+    managers.forEach(manager => {
+      const reportees = manager.children.map(name => people[name])
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+      const $teamWrap = $('<div class="team-wrapper" id="team-' + manager.name.replace(/\s+/g, '') + '"></div>');
+      reportees.forEach(reportee => {
+        const $repCard = createCard(reportee, people);
+        $teamWrap.append($repCard);
+      });
+
+      $chart.append($teamWrap);
+      $teamWrap.hide();
+
+      $('#btn-' + manager.name.replace(/\s+/g, '')).click(function () {
+        $teamWrap.slideToggle();
+        $(this).text($teamWrap.is(':visible') ? '−' : '+');
+      });
+    });
+  }
+
+  function createCard(person, people, isManager = false) {
+    const $card = $(`
+      <div class="org-node">
+        <div class="card" data-name="${person.name}">
+          <img src="${person.image}" />
+          <div class="name">${person.name}</div>
+          <div class="title">${person.jobTitle}</div>
+        </div>
+      </div>
+    `);
+
+    if (isManager) {
+      const childCount = person.children.length;
+      if (childCount > 0) {
+        $card.find('.card').append(`<div class="count-badge">${childCount}</div>`);
+        $card.append(`<div class="toggle-btn" id="btn-${person.name.replace(/\s+/g, '')}">+</div>`);
+      }
+    }
+
+    $card.find('.card').click(function (e) {
+      if ($(e.target).hasClass('toggle-btn')) return;
+      showBioModal(person);
+    });
+
+    return $card;
+  }
+
+  function showBioModal(person) {
+    $('#modalImage').attr('src', person.image);
+    $('#modalTitle').text(person.name);
+    $('#modalJobTitle').text(person.jobTitle);
+    $('#modalBio').text(person.bio);
+    $('#bioModal').fadeIn();
+  }
+})();
+</script>
