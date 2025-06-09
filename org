@@ -70,6 +70,7 @@
   color: #0078d4;
   cursor: pointer;
   margin-top: 6px;
+  user-select: none;
 }
 .manager-block {
   display: flex;
@@ -82,7 +83,7 @@
   flex-direction: column;
   align-items: center;
   margin-top: 10px;
-  display: none;
+  transition: all 0.3s ease;
 }
 
 /* Modal */
@@ -255,12 +256,18 @@
         $childrenWrap.append($repCard);
       });
 
-      $('#btn-' + manager.name.replace(/\s+/g, '')).click(function () {
+      // Expanded by default
+      $childrenWrap.show();
+      $('#btn-' + manager.name.replace(/\s+/g, '')).text('−').click(function () {
         const $btn = $(this);
-        $childrenWrap.slideToggle(300, function () {
-          const isVisible = $childrenWrap.is(':visible');
-          $btn.text(isVisible ? '−' : '+');
-        });
+        const isVisible = $childrenWrap.is(':visible');
+        if (isVisible) {
+          $childrenWrap.slideUp(300);
+          $btn.text('+');
+        } else {
+          $childrenWrap.slideDown(300);
+          $btn.text('−');
+        }
       });
     });
 
@@ -280,7 +287,7 @@
 
     if (isManager && person.children.length > 0) {
       $card.find('.card').append(`<div class="count-badge">${person.children.length}</div>`);
-      $card.append(`<div class="toggle-btn" id="btn-${person.name.replace(/\s+/g, '')}">+</div>`);
+      $card.append(`<div class="toggle-btn" id="btn-${person.name.replace(/\s+/g, '')}">−</div>`);
     }
 
     $card.find('.card').click(function (e) {
