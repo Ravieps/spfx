@@ -1,18 +1,28 @@
 <style>
+/* Org Chart Layout */
 .org-chart-wrapper {
   display: flex;
-  justify-content: center;
-  padding: 40px;
   flex-direction: column;
   align-items: center;
-}
-
-.org-node {
-  text-align: center;
-  margin: 20px;
+  padding: 30px;
   position: relative;
 }
-
+.search-container {
+  text-align: center;
+  margin-bottom: 20px;
+}
+.search-container input {
+  padding: 8px 12px;
+  font-size: 14px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  width: 250px;
+}
+.org-node {
+  text-align: center;
+  margin: 10px 0;
+  position: relative;
+}
 .card {
   border: 1px solid #ccc;
   border-radius: 12px;
@@ -52,7 +62,6 @@
   padding: 5px 8px;
   border-radius: 50%;
 }
-
 .manager-team {
   display: flex;
   justify-content: center;
@@ -60,21 +69,12 @@
   margin-top: 20px;
   position: relative;
 }
-
 .toggle-btn {
   font-size: 18px;
   color: #0078d4;
   cursor: pointer;
-  margin-top: 10px;
+  margin-top: 6px;
 }
-
-.team-wrapper {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-bottom: 30px;
-}
-
 .manager-block {
   display: flex;
   flex-direction: column;
@@ -82,39 +82,15 @@
   margin: 0 20px;
   position: relative;
 }
-
 .manager-children {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
   margin-top: 10px;
   position: relative;
 }
 
-.connection-line {
-  width: 2px;
-  height: 20px;
-  background-color: #ccc;
-  position: absolute;
-  top: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-}
-
-.line-horizontal {
-  height: 2px;
-  background-color: #ccc;
-  position: absolute;
-  top: 0;
-}
-
-.line-vertical {
-  width: 2px;
-  background-color: #ccc;
-  position: absolute;
-}
-
-/* Modal Styles */
+/* Modal */
 .bio-modal {
   display: none;
   position: fixed;
@@ -131,7 +107,6 @@
   opacity: 1;
   visibility: visible;
 }
-
 .modal-content {
   background: white;
   margin: 10% auto;
@@ -155,9 +130,24 @@
   from { transform: translateY(-50px); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
 }
+#svgConnectors {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
 </style>
 
-<div id="orgChartContainer" class="org-chart-wrapper"></div>
+<div class="search-container">
+  <input type="text" id="searchInput" placeholder="Search by name..." />
+</div>
+
+<div id="orgChartContainer" class="org-chart-wrapper">
+  <svg id="svgConnectors"></svg>
+</div>
 
 <div id="bioModal" class="bio-modal">
   <div class="modal-content">
@@ -174,27 +164,40 @@
 (function () {
   const siteUrl = _spPageContextInfo.webAbsoluteUrl;
   const listName = 'rapidorg';
+  let allPeople = {};
 
   $(document).ready(function () {
     fetchData();
-
     $('.close-btn').click(() => $('#bioModal').removeClass('show'));
     $(window).click(e => {
       if ($(e.target).is('#bioModal')) $('#bioModal').removeClass('show');
+    });
+    $('#searchInput').on('input', function () {
+      const query = $(this).val().toLowerCase();
+      if (!query) {
+        renderOrgChart(allPeople);
+        return;
+      }
+      const filtered = {};
+      for (let key in allPeople) {
+        if (allPeople[key].name.toLowerCase().includes(query)) {
+          filtered[key] = allPeople[key];
+        }
+      }
+      renderOrgChart(filtered, true);
     });
   });
 
   function fetchData() {
     const url = siteUrl + "/_api/web/lists/getbytitle('" + listName + "')/items?$select=Title,JobTitle,Manager/Title,ImageUrl,Bio,Order&$expand=Manager&$orderby=Order asc";
-
     $.ajax({
       url: url,
       type: "GET",
       headers: { "Accept": "application/json;odata=verbose" },
       success: function (data) {
         const items = data.d.results;
-        const people = processPeople(items);
-        renderOrgChart(people);
+        allPeople = processPeople(items);
+        renderOrgChart(allPeople);
       },
       error: function (err) {
         console.error("Error fetching data from SharePoint list:", err);
@@ -215,25 +218,28 @@
         children: []
       };
     });
-
     Object.values(people).forEach(person => {
       if (person.manager && people[person.manager]) {
         people[person.manager].children.push(person.name);
       }
     });
-
     return people;
   }
 
   function renderOrgChart(people) {
-    const exec = Object.values(people).find(p => !p.manager);
-    const $chart = $('#orgChartContainer');
+    $('#orgChartContainer').find('.org-node, .manager-team').remove();
+    $('#svgConnectors').empty();
 
+    const exec = Object.values(people).find(p => !p.manager);
+    if (!exec) return;
+
+    const $chart = $('#orgChartContainer');
     const $execNode = createCard(exec, people);
     $chart.append($execNode);
 
     const $managerLine = $('<div class="manager-team"></div>');
     const managers = exec.children.map(name => people[name])
+      .filter(Boolean)
       .sort((a, b) => a.order - b.order);
 
     managers.forEach(manager => {
@@ -250,6 +256,7 @@
 
     managers.forEach(manager => {
       const reportees = manager.children.map(name => people[name])
+        .filter(Boolean)
         .sort((a, b) => a.name.localeCompare(b.name));
 
       const $teamWrap = $('#team-' + manager.name.replace(/\s+/g, ''));
@@ -257,19 +264,23 @@
         const $repCard = createCard(reportee, people);
         $teamWrap.append($repCard);
       });
-
       $teamWrap.hide();
 
       $('#btn-' + manager.name.replace(/\s+/g, '')).click(function () {
-        $teamWrap.slideToggle();
-        $(this).text($teamWrap.is(':visible') ? '−' : '+');
+        const $btn = $(this);
+        $teamWrap.slideToggle(300, function () {
+          $btn.text($teamWrap.is(':visible') ? '−' : '+');
+          drawConnections();
+        });
       });
     });
+
+    setTimeout(drawConnections, 500);
   }
 
   function createCard(person, people, isManager = false) {
     const $card = $(`
-      <div class="org-node">
+      <div class="org-node" id="node-${person.name.replace(/\s+/g, '')}">
         <div class="card" data-name="${person.name}">
           <img src="${person.image}" />
           <div class="name">${person.name}</div>
@@ -278,12 +289,9 @@
       </div>
     `);
 
-    if (isManager) {
-      const childCount = person.children.length;
-      if (childCount > 0) {
-        $card.find('.card').append(`<div class="count-badge">${childCount}</div>`);
-        $card.append(`<div class="toggle-btn" id="btn-${person.name.replace(/\s+/g, '')}">+</div>`);
-      }
+    if (isManager && person.children.length > 0) {
+      $card.find('.card').append(`<div class="count-badge">${person.children.length}</div>`);
+      $card.append(`<div class="toggle-btn" id="btn-${person.name.replace(/\s+/g, '')}">+</div>`);
     }
 
     $card.find('.card').click(function (e) {
@@ -300,6 +308,39 @@
     $('#modalJobTitle').text(person.jobTitle);
     $('#modalBio').text(person.bio);
     $('#bioModal').addClass('show');
+  }
+
+  function drawConnections() {
+    const svg = $('#svgConnectors');
+    svg.empty();
+    $('.org-node').each(function () {
+      const fromId = $(this).attr('id');
+      const fromNode = $(this).find('.card');
+      const fromRect = fromNode[0].getBoundingClientRect();
+      const fromCenterX = fromRect.left + fromRect.width / 2 + window.scrollX;
+      const fromBottomY = fromRect.bottom + window.scrollY;
+      const personName = fromNode.data('name');
+      const person = allPeople[personName];
+      if (!person || !person.children) return;
+      person.children.forEach(childName => {
+        const childId = '#node-' + childName.replace(/\s+/g, '');
+        const $toNode = $(childId);
+        if (!$toNode.length) return;
+        const toRect = $toNode.find('.card')[0].getBoundingClientRect();
+        const toCenterX = toRect.left + toRect.width / 2 + window.scrollX;
+        const toTopY = toRect.top + window.scrollY;
+        const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        $(line).attr({
+          x1: fromCenterX,
+          y1: fromBottomY,
+          x2: toCenterX,
+          y2: toTopY,
+          stroke: "#ccc",
+          "stroke-width": 2
+        });
+        svg.append(line);
+      });
+    });
   }
 })();
 </script>
