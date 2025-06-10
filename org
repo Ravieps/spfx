@@ -1,25 +1,135 @@
 <style>
-/* SAME STYLES AS BEFORE - abbreviated here for brevity */
 .org-chart-wrapper {
   position: relative;
-  padding: 30px;
+  padding: 40px;
 }
 svg.connector-lines {
   position: absolute;
   top: 0; left: 0;
   width: 100%; height: 100%;
   pointer-events: none;
-  overflow: visible;
   z-index: 0;
+  overflow: visible;
+}
+.search-container {
+  margin-bottom: 15px;
+  text-align: center;
+}
+#searchInput {
+  padding: 8px;
+  width: 300px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
 }
 .org-node {
-  position: relative;
   text-align: center;
   margin: 10px 0;
 }
 .card {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 10px;
+  display: inline-block;
+  cursor: pointer;
   position: relative;
   z-index: 1;
+  width: 160px;
+  box-shadow: 2px 2px 6px rgba(0,0,0,0.1);
+}
+.card img {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.card .name {
+  font-weight: bold;
+  margin-top: 6px;
+}
+.card .title {
+  font-size: 0.9em;
+  color: #555;
+}
+.count-badge {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  background: #ff5d5d;
+  color: #fff;
+  border-radius: 50%;
+  padding: 4px 8px;
+  font-size: 0.8em;
+}
+.toggle-btn {
+  margin-top: 4px;
+  font-size: 18px;
+  cursor: pointer;
+  user-select: none;
+}
+.manager-team {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.manager-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 20px;
+}
+.manager-children {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.bio-modal {
+  display: none;
+  position: fixed;
+  z-index: 999;
+  left: 0; top: 0; width: 100%; height: 100%;
+  background-color: rgba(0,0,0,0.6);
+  justify-content: center;
+  align-items: center;
+}
+.bio-modal.show {
+  display: flex;
+  animation: fadeIn 0.3s ease-in-out;
+}
+.modal-content {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  text-align: center;
+  animation: slideIn 0.3s ease-out;
+  max-width: 400px;
+}
+.modal-content img {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+}
+.modal-content h2 {
+  margin: 10px 0 5px;
+}
+.modal-content h4 {
+  color: #666;
+  margin: 0 0 10px;
+}
+.close-btn {
+  position: absolute;
+  top: 10px;
+  right: 20px;
+  font-size: 22px;
+  cursor: pointer;
+  color: #fff;
+}
+@keyframes fadeIn {
+  from { opacity: 0; } to { opacity: 1; }
+}
+@keyframes slideIn {
+  from { transform: translateY(-20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }
 </style>
 
@@ -31,7 +141,6 @@ svg.connector-lines {
   <svg class="connector-lines"></svg>
 </div>
 
-<!-- Modal -->
 <div id="bioModal" class="bio-modal">
   <div class="modal-content">
     <span class="close-btn">&times;</span>
@@ -71,6 +180,14 @@ svg.connector-lines {
         if (name.toLowerCase().includes(query)) addWithHierarchy(name);
       });
       renderOrgChart(matched);
+    });
+
+    let resizeTimer;
+    $(window).on('resize orientationchange', function () {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        drawConnections($('#orgChartContainer')[0], $('#orgChartContainer svg')[0]);
+      }, 300);
     });
   });
 
@@ -115,42 +232,43 @@ svg.connector-lines {
     const exec = Object.values(people).find(p => !p.manager);
     if (!exec) return;
 
-    const $execNode = createCard(exec, people).appendTo($chart);
+    const $execNode = createCard(exec).appendTo($chart);
     const $managerLine = $('<div class="manager-team"></div>').appendTo($chart);
 
     const managers = exec.children.map(name => people[name])
       .filter(Boolean)
       .sort((a, b) => a.order - b.order);
 
-    let execCenter = null;
-    let managerCenters = [];
-
     managers.forEach(manager => {
       const $block = $('<div class="manager-block"></div>').appendTo($managerLine);
-      const $managerNode = createCard(manager, people, true).appendTo($block);
+      const $managerNode = createCard(manager, true).appendTo($block);
       const $childrenWrap = $('<div class="manager-children"></div>').appendTo($block);
 
       const children = manager.children.map(name => people[name])
         .filter(Boolean)
         .sort((a, b) => a.name.localeCompare(b.name));
 
-      children.forEach(child => createCard(child, people).appendTo($childrenWrap));
-
+      children.forEach(child => createCard(child).appendTo($childrenWrap));
       $childrenWrap.show();
+
       $managerNode.find('.toggle-btn').click(function () {
         const $btn = $(this);
         const isVisible = $childrenWrap.is(':visible');
-        $childrenWrap.slideToggle(300);
-        $btn.text(isVisible ? '+' : '−');
-        setTimeout(() => drawConnections($chart[0], $svg[0]), 310);
+
+        if (isVisible) {
+          $childrenWrap.slideUp(300, () => drawConnections($chart[0], $svg[0]));
+          $btn.text('+');
+        } else {
+          $childrenWrap.slideDown(300, () => drawConnections($chart[0], $svg[0]));
+          $btn.text('−');
+        }
       });
     });
 
-    // Delay SVG draw after DOM layout
     setTimeout(() => drawConnections($chart[0], $svg[0]), 300);
   }
 
-  function createCard(person, people, isManager = false) {
+  function createCard(person, isManager = false) {
     const $card = $(`
       <div class="org-node">
         <div class="card" data-name="${person.name}">
@@ -192,7 +310,7 @@ svg.connector-lines {
       };
     };
 
-    const allCards = $(container).find('.card');
+    const allCards = $(container).find('.card:visible');
     const nodes = {};
     allCards.each((_, el) => {
       const name = $(el).data('name');
