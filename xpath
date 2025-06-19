@@ -1,0 +1,15 @@
+concat(
+  "INC",
+  substring("00", 1, 2 - string-length(string(
+    xdXDocument:GetDOM("TicketList")/dfs:myFields/dfs:dataFields
+    /d:SharePointListItem_RW[
+      d:Author = userName()
+    ][1]/d:ID
+  ))),
+  string(
+    xdXDocument:GetDOM("TicketList")/dfs:myFields/dfs:dataFields
+    /d:SharePointListItem_RW[
+      d:Author = userName()
+    ][1]/d:ID
+  )
+)
