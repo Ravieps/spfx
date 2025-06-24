@@ -1,0 +1,387 @@
+<!-- Dependencies -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="/_layouts/15/SP.RequestExecutor.ashx"></script>
+
+<!-- Styles + Modals + Form UI -->
+<style>
+  .sp-custom-form {
+    font-family: "Segoe UI", sans-serif;
+    background: #f4f4f4;
+    padding: 25px;
+    border-radius: 8px;
+    max-width: 700px;
+    margin: auto;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+  }
+  .sp-custom-form h2 { font-size: 22px; margin-bottom: 20px; }
+  .sp-form-group { margin-bottom: 15px; }
+  .sp-form-group label { font-weight: 600; margin-bottom: 6px; display: block; }
+  .sp-form-group input, .sp-form-group select {
+    width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #ccc;
+  }
+  .sp-review-row { display: flex; gap: 10px; }
+  .people-picker-container {
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 5px;
+    background: #fff;
+  }
+  .sp-submit-btn {
+    background: #0078d4;
+    color: #fff;
+    padding: 10px 20px;
+    border: none;
+    font-weight: 600;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.3s;
+  }
+  .sp-submit-btn:hover { background: #005a9e; }
+
+  /* Spinner overlay */
+  #spinnerOverlay {
+    display: none;
+    position: fixed; z-index: 9998;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(255,255,255,0.8);
+    text-align: center; padding-top: 20%;
+  }
+  #spinnerOverlay img { width: 80px; opacity: 0.7; }
+
+  /* Attachment list */
+  .attachment-list { margin: 10px 0; border-top: 1px solid #ddd; padding-top: 10px; }
+  .attachment-item { display: flex; align-items: center; margin-bottom: 6px; }
+  .attachment-item span { flex: 1; }
+  .remove-attach-btn {
+    background: #d9534f; color: #fff; border: none; padding: 4px 8px;
+    border-radius: 4px; cursor: pointer;
+  }
+  .remove-attach-btn:hover { background: #c9302c; }
+
+  /* Custom confirm remove modal */
+  #confirmRemoveModal .modal-content { width: 300px; }
+  .confirm-btn, .cancel-btn {
+    color: #fff; border: none; padding: 8px 12px; margin: 0 10px;
+    border-radius: 4px; cursor: pointer;
+  }
+  .confirm-btn { background: #0078d4; }
+  .confirm-btn:hover { background: #005a9e; }
+  .cancel-btn { background: #aaa; }
+  .cancel-btn:hover { background: #888; }
+
+  /* Modal styles shared */
+  .modal {
+    display: none; position: fixed; z-index: 9999;
+    padding-top: 150px; left: 0; top: 0; width: 100%; height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.4);
+  }
+  .modal-content {
+    background-color: #fff; margin: auto;
+    padding: 20px;
+    border-radius: 8px;
+    text-align: center;
+  }
+</style>
+
+<!-- Confirmation Modal -->
+<div id="confirmationModal" class="modal">
+  <div class="modal-content">
+    <h3>Form Submitted Successfully!</h3>
+    <p>You will be redirected shortly.</p>
+  </div>
+</div>
+
+<!-- Confirm Remove Attachment Modal -->
+<div id="confirmRemoveModal" class="modal">
+  <div class="modal-content">
+    <h4>Delete Attachment?</h4>
+    <p id="removeFileName"></p>
+    <button class="confirm-btn" id="confirmRemoveYes">Yes</button>
+    <button class="cancel-btn" id="confirmRemoveNo">No</button>
+  </div>
+</div>
+
+<!-- Spinner Overlay -->
+<div id="spinnerOverlay">
+  <img src="https://i.imgur.com/LLF5iyg.gif" alt="Loading...">
+</div>
+
+<!-- Form UI -->
+<div class="sp-custom-form">
+  <h2>Request Submission Form</h2>
+
+  <div class="sp-form-group">
+    <label>Assigned To</label>
+    <div id="assignedToPickerDiv" class="people-picker-container"></div>
+  </div>
+
+  <div class="sp-form-group">
+    <label>Additional Contact</label>
+    <div id="additionalContactPickerDiv" class="people-picker-container"></div>
+  </div>
+
+  <div class="sp-form-group">
+    <label>BCT Contact</label>
+    <div id="bctContactPickerDiv" class="people-picker-container"></div>
+  </div>
+
+  <div class="sp-form-group">
+    <label>Status</label>
+    <select id="status"></select>
+  </div>
+
+  <div class="sp-form-group">
+    <label>Deadline</label>
+    <input type="date" id="deadline">
+  </div>
+
+  <div class="sp-form-group">
+    <label>Review Period</label>
+    <div class="sp-review-row">
+      <select id="reviewMonth"></select>
+      <select id="reviewYear"></select>
+    </div>
+  </div>
+
+  <div class="sp-form-group">
+    <label>Attachments</label>
+    <input type="file" id="fileInput" multiple />
+  </div>
+
+  <div id="existingAttachments" class="attachment-list"></div>
+
+  <button id="submitBtn" class="sp-submit-btn">Submit</button>
+</div>
+
+<!-- JavaScript Logic -->
+<script type="text/javascript">
+$(function(){
+  const siteUrl = _spPageContextInfo.webAbsoluteUrl;
+  const listName = "Requests";
+  const itemId = new URLSearchParams(window.location.search).get("itemId");
+  let removeFileName = "";
+
+  initForm();
+  if(itemId) loadExisting(itemId);
+  $('#submitBtn').click(submitForm);
+  $('#confirmRemoveYes').click(() => {
+    $('#confirmRemoveModal').hide();
+    removeAttachment();
+  });
+  $('#confirmRemoveNo').click(() => $('#confirmRemoveModal').hide());
+
+  function initForm(){
+    loadStatus();
+    initPeoplePicker("assignedTo", false);
+    initPeoplePicker("additionalContact", true);
+    initPeoplePicker("bctContact", true);
+    populateReviewPeriod();
+    $('#deadline').val(formatDate(addBusinessDays(new Date(), 10)));
+  }
+
+  function loadStatus(){
+    $.ajax({
+      url: `${siteUrl}/_api/web/lists/getbytitle('StatusValues')/items?$select=Title`,
+      headers: { Accept: "application/json;odata=verbose" },
+      success: r => {
+        r.d.results.forEach(i => {
+          $('#status').append(`<option>${i.Title}</option>`);
+        });
+      }
+    });
+  }
+
+  function initPeoplePicker(field, multi){
+    SPClientPeoplePicker_InitStandaloneControlWrapper(
+      `${field}PickerDiv`, null, {
+        PrincipalAccountType: "User,DL",
+        SearchPrincipalSource: 15,
+        ResolvePrincipalSource: 15,
+        AllowMultipleValues: multi,
+        Width: "100%",
+        MaximumEntitySuggestions: 50
+      }
+    );
+  }
+
+  function populateReviewPeriod(){
+    const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+    const year = new Date().getFullYear();
+    months.forEach((m,i)=> $('#reviewMonth').append(`<option value="${i+1}">${m}</option>`));
+    for(let y=year-5; y<=year+5; y++) $('#reviewYear').append(`<option>${y}</option>`);
+  }
+
+  function addBusinessDays(d, cnt){
+    while(cnt--){
+      d.setDate(d.getDate()+1);
+      if([0,6].includes(d.getDay())) cnt++;
+    }
+    return d;
+  }
+
+  function formatDate(d){ return d.toISOString().split("T")[0]; }
+
+  function getPeopleKeys(field){
+    const people = SPClientPeoplePicker.SPClientPeoplePickerDict[`${field}PickerDiv_TopSpan`].GetAllUserInfo();
+    return people.map(u=>u.Key);
+  }
+
+  function getDigest(cb){
+    $.ajax({
+      url: `${siteUrl}/_api/contextinfo`,
+      method: "POST",
+      headers: { Accept: "application/json;odata=verbose" },
+      success: r => cb(r.d.GetContextWebInformation.FormDigestValue),
+      error: () => alert("Failed to get token")
+    });
+  }
+
+  function submitForm(){
+    $('#spinnerOverlay').show();
+    getDigest(digest => {
+      const isEdit = !!itemId;
+      const url = isEdit
+        ? `${siteUrl}/_api/web/lists/getbytitle('${listName}')/items(${itemId})`
+        : `${siteUrl}/_api/web/lists/getbytitle('${listName}')/items`;
+      const headers = {
+        Accept: "application/json;odata=verbose",
+        "X-RequestDigest": digest
+      };
+      if(isEdit) {
+        headers["X-HTTP-Method"] = "MERGE";
+        headers["IF-MATCH"] = "*";
+      }
+
+      const payload = {
+        "__metadata": { type: "SP.Data.RequestsListItem" },
+        AssignedToId: getPeopleKeys("assignedTo")[0],
+        AdditionalContactId: { results: getPeopleKeys("additionalContact") },
+        BCTContactId: { results: getPeopleKeys("bctContact") },
+        Status: $('#status').val(),
+        Deadline: $('#deadline').val(),
+        ReviewPeriod: `${$('#reviewMonth').val()}-${$('#reviewYear').val()}`
+      };
+
+      $.ajax({
+        url, type: "POST", contentType: "application/json;odata=verbose",
+        headers, data: JSON.stringify(payload),
+        success: res => {
+          const newId = isEdit ? itemId : res.d.ID;
+          uploadAttachments(newId, digest);
+        },
+        error: err => {
+          $('#spinnerOverlay').hide();
+          alert("Save failed: " + JSON.stringify(err));
+        }
+      });
+    });
+  }
+
+  function uploadAttachments(id, digest){
+    const files = $('#fileInput')[0].files;
+    let remaining = files.length;
+    if(remaining===0) return finalize();
+
+    Array.from(files).forEach(f => {
+      const reader = new FileReader();
+      reader.onload = e => {
+        $.ajax({
+          url: `${siteUrl}/_api/web/lists/getbytitle('${listName}')/items(${id})/AttachmentFiles/add(FileName='${encodeURIComponent(f.name)}')`,
+          type: "POST",
+          data: e.target.result,
+          processData: false,
+          binaryStringRequestBody: true,
+          headers: { "X-RequestDigest": digest },
+          success: () => { if(--remaining===0) finalize(); },
+          error: () => { if(--remaining===0) finalize(); }
+        });
+      };
+      reader.readAsArrayBuffer(f);
+    });
+  }
+
+  function finalize(){
+    $('#spinnerOverlay').hide();
+    $('#confirmationModal').fadeIn();
+    setTimeout(()=> window.location.href = siteUrl + "/SitePages/Home.aspx", 3000);
+  }
+
+  function loadExisting(id){
+    getDigest(digest => {
+      $.ajax({
+        url: `${siteUrl}/_api/web/lists/getbytitle('${listName}')/items(${id})?$expand=AssignedTo,AdditionalContact,BCTContact`,
+        headers: { Accept: "application/json;odata=verbose" },
+        success: r => {
+          const d = r.d;
+          $('#deadline').val(d.Deadline.split("T")[0]);
+          $('#status').val(d.Status);
+          const [m,y] = d.ReviewPeriod.split('-');
+          $('#reviewMonth').val(m);
+          $('#reviewYear').val(y);
+          loadPeople("assignedTo", d.AssignedTo);
+          loadPeople("additionalContact", d.AdditionalContact.results);
+          loadPeople("bctContact", d.BCTContact.results);
+          loadAttachments(id);
+        }
+      });
+    });
+  }
+
+  function loadPeople(field, data){
+    setTimeout(() => {
+      const picker = SPClientPeoplePicker.SPClientPeoplePickerDict[`${field}PickerDiv_TopSpan`];
+      (Array.isArray(data) ? data : [data]).forEach(u => picker.AddUserKeys(u.Email));
+    }, 500);
+  }
+
+  function loadAttachments(id){
+    $.ajax({
+      url: `${siteUrl}/_api/web/lists/getbytitle('${listName}')/items(${id})/AttachmentFiles`,
+      headers: { Accept: "application/json;odata=verbose" },
+      success: r => {
+        const container = $('#existingAttachments').empty();
+        r.d.results.forEach(att => {
+          $(`
+            <div class="attachment-item">
+              <span><a href="${att.ServerRelativeUrl}" target="_blank">${att.FileName}</a></span>
+              <button class="remove-attach-btn" data-filename="${att.FileName}">Remove</button>
+            </div>
+          `).appendTo(container);
+        });
+        $('.remove-attach-btn').click(ev => {
+          removeFileName = $(ev.currentTarget).data('filename');
+          $('#removeFileName').text(removeFileName);
+          $('#confirmRemoveModal').show();
+        });
+      }
+    });
+  }
+
+  function removeAttachment(){
+    $('#spinnerOverlay').show();
+    getDigest(digest => {
+      $.ajax({
+        url: `${siteUrl}/_api/web/lists/getbytitle('${listName}')/`
+          +`items(${itemId})/AttachmentFiles/getByFileName('${encodeURIComponent(removeFileName)}')`,
+        type: "POST",
+        headers: {
+          "X-HTTP-Method": "DELETE",
+          "IF-MATCH": "*",
+          "X-RequestDigest": digest
+        },
+        success: () => {
+          $('#spinnerOverlay').hide();
+          $('#confirmRemoveModal').hide();
+          loadAttachments(itemId);
+        },
+        error: () => {
+          $('#spinnerOverlay').hide();
+          $('#confirmRemoveModal').hide();
+          alert("Failed to delete attachment");
+        }
+      });
+    });
+  }
+});
+</script>
