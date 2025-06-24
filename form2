@@ -1,0 +1,327 @@
+<!-- PART 1 START -->
+<!-- Dependencies -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<!-- Styles for the form, spinners, warnings -->
+<style>
+  .sp-custom-form {
+    font-family: "Segoe UI", sans-serif;
+    background: #f4f4f4;
+    padding: 25px;
+    border-radius: 8px;
+    max-width: 700px;
+    margin: auto;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+  }
+  .sp-form-group {
+    margin-bottom: 15px;
+    position: relative;
+  }
+  .sp-form-group label {
+    font-weight: 600;
+    margin-bottom: 6px;
+    display: block;
+  }
+  .sp-form-group input,
+  .sp-form-group select {
+    width: 100%;
+    padding: 10px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+  }
+  .sp-form-group input.invalid {
+    border-color: red;
+    background: #fff3f3;
+  }
+  .warning-message {
+    color: red;
+    font-size: 12px;
+    margin-top: 5px;
+  }
+  #spinnerOverlay {
+    display: none;
+    position: fixed;
+    z-index: 9998;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(255,255,255,0.8);
+    text-align: center;
+    padding-top: 20%;
+  }
+  #spinnerOverlay img {
+    width: 80px;
+    opacity: 0.7;
+  }
+</style>
+
+<!-- Spinner -->
+<div id="spinnerOverlay">
+  <img src="https://i.imgur.com/LLF5iyg.gif" alt="Loading...">
+</div>
+
+<!-- Form -->
+<div class="sp-custom-form">
+  <h2>Submit Request</h2>
+
+  <div class="sp-form-group">
+    <label>Assigned To (email)</label>
+    <input type="text" id="assignedToInput" />
+    <div class="warning-message" id="assignedToWarning"></div>
+  </div>
+
+  <div class="sp-form-group">
+    <label>Additional Contact(s) (comma-separated emails)</label>
+    <input type="text" id="additionalContactInput" />
+    <div class="warning-message" id="additionalWarning"></div>
+  </div>
+
+  <div class="sp-form-group">
+    <label>BCT Contact(s) (comma-separated emails)</label>
+    <input type="text" id="bctContactInput" />
+    <div class="warning-message" id="bctWarning"></div>
+  </div>
+
+  <div class="sp-form-group">
+    <label>Status</label>
+    <select id="status"></select>
+  </div>
+
+  <div class="sp-form-group">
+    <label>Deadline</label>
+    <input type="date" id="deadline" />
+  </div>
+
+  <div class="sp-form-group">
+    <label>Review Period</label>
+    <div style="display: flex; gap: 10px;">
+      <select id="reviewMonth"></select>
+      <select id="reviewYear"></select>
+    </div>
+  </div>
+
+  <div class="sp-form-group">
+    <label>Attachments</label>
+    <input type="file" id="attachmentInput" multiple />
+  </div>
+
+  <button id="submitBtn" class="sp-submit-btn">Submit</button>
+</div>
+
+<script type="text/javascript">
+$(function() {
+  const siteUrl = _spPageContextInfo.webAbsoluteUrl;
+
+  function isValidEmail(email) {
+    const re = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+    return re.test(email.trim());
+  }
+
+  function validateEmailField(inputId, warningId) {
+    const emails = $(`#${inputId}`).val().split(',').map(e => e.trim()).filter(Boolean);
+    const invalids = emails.filter(e => !isValidEmail(e));
+    if (invalids.length) {
+      $(`#${inputId}`).addClass('invalid');
+      $(`#${warningId}`).text('Invalid email(s): ' + invalids.join(', '));
+      return false;
+    } else {
+      $(`#${inputId}`).removeClass('invalid');
+      $(`#${warningId}`).text('');
+      return true;
+    }
+  }
+
+  function resolveEmails(emails, onComplete) {
+    const emailList = emails.split(',').map(e => e.trim()).filter(e => e);
+    const resolvedIds = [];
+    const unresolved = [];
+    let count = emailList.length;
+
+    if (!count) return onComplete([], []);
+
+    emailList.forEach(email => {
+      $.ajax({
+        url: siteUrl + "/_api/web/siteusers/getbyemail('" + encodeURIComponent(email) + "')",
+        headers: { Accept: "application/json;odata=verbose" },
+        success: res => {
+          resolvedIds.push(res.d.Id);
+          if (--count === 0) onComplete(resolvedIds, unresolved);
+        },
+        error: () => {
+          unresolved.push(email);
+          if (--count === 0) onComplete(resolvedIds, unresolved);
+        }
+      });
+    });
+  }
+
+  function validateAndSubmit() {
+    $('#spinnerOverlay').show();
+
+    const validAssigned = validateEmailField('assignedToInput', 'assignedToWarning');
+    const validAdditional = validateEmailField('additionalContactInput', 'additionalWarning');
+    const validBct = validateEmailField('bctContactInput', 'bctWarning');
+
+    if (!(validAssigned && validAdditional && validBct)) {
+      $('#spinnerOverlay').hide();
+      return;
+    }
+
+    resolveEmails($('#assignedToInput').val(), (assignedResolved, assignedUnresolved) => {
+      if (assignedUnresolved.length) {
+        $('#assignedToWarning').text('Unresolved: ' + assignedUnresolved.join(', '));
+        $('#spinnerOverlay').hide();
+        return;
+      }
+      resolveEmails($('#additionalContactInput').val(), (addResolved, addUnresolved) => {
+        if (addUnresolved.length) {
+          $('#additionalWarning').text('Unresolved: ' + addUnresolved.join(', '));
+          $('#spinnerOverlay').hide();
+          return;
+        }
+        resolveEmails($('#bctContactInput').val(), (bctResolved, bctUnresolved) => {
+          if (bctUnresolved.length) {
+            $('#bctWarning').text('Unresolved: ' + bctUnresolved.join(', '));
+            $('#spinnerOverlay').hide();
+            return;
+          }
+
+          submitFinal(assignedResolved, addResolved, bctResolved);
+        });
+      });
+    });
+  }
+
+  $('#submitBtn').click(validateAndSubmit);
+});
+</script>
+
+<script type="text/javascript">
+$(document).ready(function () {
+  const siteUrl = _spPageContextInfo.webAbsoluteUrl;
+
+  function loadStatusChoices() {
+    $.ajax({
+      url: `${siteUrl}/_api/web/lists/GetByTitle('Requests')/fields?$filter=EntityPropertyName eq 'Status'`,
+      headers: { Accept: "application/json;odata=verbose" },
+      success: function (data) {
+        const choices = data.d.results[0].Choices.results;
+        choices.forEach(choice => {
+          $('#status').append(`<option value="${choice}">${choice}</option>`);
+        });
+      }
+    });
+  }
+
+  function loadReviewPeriod() {
+    const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    months.forEach((m, i) => {
+      $('#reviewMonth').append(`<option value="${m}">${m}</option>`);
+    });
+    const year = new Date().getFullYear();
+    for (let i = year; i <= year + 5; i++) {
+      $('#reviewYear').append(`<option value="${i}">${i}</option>`);
+    }
+  }
+
+  function setDefaultDeadline() {
+    const today = new Date();
+    let added = 0;
+    let deadline = new Date(today);
+    while (added < 10) {
+      deadline.setDate(deadline.getDate() + 1);
+      if (deadline.getDay() !== 0 && deadline.getDay() !== 6) {
+        added++;
+      }
+    }
+    $('#deadline').val(deadline.toISOString().split('T')[0]);
+  }
+
+  function getRequestDigest(callback) {
+    $.ajax({
+      url: `${siteUrl}/_api/contextinfo`,
+      method: "POST",
+      headers: { Accept: "application/json;odata=verbose" },
+      success: function (data) {
+        callback(data.d.GetContextWebInformation.FormDigestValue);
+      }
+    });
+  }
+
+  function saveFormItem(formDigest, assignedIds, addIds, bctIds) {
+    const item = {
+      "__metadata": { "type": "SP.Data.RequestsListItem" },
+      "Assigned_x0020_toId": assignedIds[0] || null,
+      "BCT_x0020_ContactId": bctIds[0] || null,
+      "Additional_x0020_ContactId": addIds[0] || null,
+      "Status": $('#status').val(),
+      "Deadline": $('#deadline').val(),
+      "ReviewPeriod": $('#reviewMonth').val() + ' ' + $('#reviewYear').val()
+    };
+
+    $.ajax({
+      url: `${siteUrl}/_api/web/lists/getbytitle('Requests')/items`,
+      method: "POST",
+      headers: {
+        "Accept": "application/json;odata=verbose",
+        "Content-Type": "application/json;odata=verbose",
+        "X-RequestDigest": formDigest
+      },
+      data: JSON.stringify(item),
+      success: function (data) {
+        const itemId = data.d.ID;
+        uploadAttachments(itemId, formDigest);
+      },
+      error: function (err) {
+        alert("Error saving item: " + JSON.stringify(err));
+        $('#spinnerOverlay').hide();
+      }
+    });
+  }
+
+  function uploadAttachments(itemId, formDigest) {
+    const files = $('#attachmentInput')[0]?.files;
+    if (!files || files.length === 0) {
+      $('#spinnerOverlay').hide();
+      alert('Form submitted successfully without attachments.');
+      return;
+    }
+
+    let uploaded = 0;
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const arrayBuffer = e.target.result;
+        $.ajax({
+          url: `${siteUrl}/_api/web/lists/getbytitle('Requests')/items(${itemId})/AttachmentFiles/add(FileName='${file.name}')`,
+          method: "POST",
+          data: arrayBuffer,
+          processData: false,
+          binaryStringRequestBody: true,
+          headers: {
+            "Accept": "application/json;odata=verbose",
+            "X-RequestDigest": formDigest
+          },
+          success: function () {
+            if (++uploaded === files.length) {
+              $('#spinnerOverlay').hide();
+              alert("Form and attachments submitted successfully.");
+            }
+          }
+        });
+      };
+      reader.readAsArrayBuffer(file);
+    }
+  }
+
+  function submitFinal(assignedResolved, addResolved, bctResolved) {
+    getRequestDigest(function (digest) {
+      saveFormItem(digest, assignedResolved, addResolved, bctResolved);
+    });
+  }
+
+  loadStatusChoices();
+  loadReviewPeriod();
+  setDefaultDeadline();
+});
+</script>
