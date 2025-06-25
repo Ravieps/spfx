@@ -1,0 +1,189 @@
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.6.1/css/bootstrap.min.css">
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.13.2/jquery-ui.min.js"></script>
+
+<div class="container mt-3">
+  <h3>Form Builder</h3>
+  <button id="add-field" class="btn btn-primary mb-2">Add Field</button>
+  <div id="field-list" class="list-group mb-4"></div>
+  <button id="save-config" class="btn btn-success">Save & Render Form</button>
+  <hr>
+  <h3>Generated Form</h3>
+  <div id="form-container"></div>
+</div>
+<script>
+(function($){
+  const config = { fields: [] };
+
+  // Open field editor
+  function openFieldEditor(field, index) {
+    const types = ['text','multiline','choice','date','people','lookup','file'];
+    const tpl = `
+      <div id="editor" title="${field ? 'Edit Field' : 'New Field'}">
+        <div class="form-group"><label>Title</label>
+          <input type="text" id="fTitle" class="form-control" value="${field?.title || ''}">
+        </div>
+        <div class="form-group"><label>Type</label>
+          <select id="fType" class="form-control">
+            ${types.map(t => `<option value="${t}" ${field?.type===t?'selected':''}>${t}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group" id="choicesDiv" style="${field?.type==='choice'?'':'display:none'}">
+          <label>Choices (comma‑separated)</label>
+          <input type="text" id="fChoices" class="form-control" value="${field?.choices?.join(',')||''}">
+        </div>
+        <div class="form-group"><label>Required</label>
+          <input type="checkbox" id="fRequired" ${field?.required?'checked':''}>
+        </div>
+        <div class="form-group"><label>Conditional <em>(show when …)</em></label>
+          <input type="text" id="fWhenField" placeholder="Field title" class="form-control" value="${field?.showWhen?.field||''}">
+          <input type="text" id="fWhenValue" placeholder="Value equals" class="form-control mt-1" value="${field?.showWhen?.value||''}">
+        </div>
+      </div>`;
+      
+    const $d = $(tpl).dialog({
+      modal:true, width:400,
+      buttons: {
+        Save() {
+          const f = {
+            title: $('#fTitle').val(),
+            type: $('#fType').val(),
+            required: $('#fRequired').is(':checked'),
+          };
+          if (f.type==='choice') f.choices = $('#fChoices').val().split(',');
+          const sf = $('#fWhenField').val().trim();
+          if (sf) f.showWhen = { field: sf, value: $('#fWhenValue').val() };
+          if (field && typeof index==='number') config.fields[index] = f;
+          else config.fields.push(f);
+          $d.dialog('close').remove();
+          renderFieldList();
+        },
+        Cancel() { $d.dialog('close').remove(); }
+      }
+    });
+    $('#fType').on('change', function(){
+      $('#choicesDiv').toggle(this.value==='choice');
+    });
+  }
+
+  // Hijack Add / Edit
+  $('#add-field').click(() => openFieldEditor());
+  $('#field-list').on('click','.edit-field',function(){
+    openFieldEditor(config.fields[$(this).data('idx')], $(this).data('idx'));
+  });
+  $('#field-list').on('click','.delete-field',function(){
+    config.fields.splice($(this).data('idx'),1);
+    renderFieldList();
+  });
+
+  function renderFieldList(){
+    $('#field-list').empty();
+    config.fields.forEach((f,i)=>{
+      $('#field-list').append(`
+        <div class="list-group-item d-flex justify-content-between align-items-center">
+          <div><strong>${f.title}</strong> <em>(${f.type}${f.required?'*':''})</em></div>
+          <div>
+            <button class="btn btn-sm btn-info edit-field" data-idx="${i}">Edit</button>
+            <button class="btn btn-sm btn-danger delete-field" data-idx="${i}">Delete</button>
+          </div>
+        </div>`);
+    });
+  }
+
+  // Generate form
+  $('#save-config').click(() => {
+    $('#form-container').empty();
+    const $f = $('<form id="generated-form"></form>');
+    config.fields.forEach(f => {
+      const id = 'fld_' + f.title.replace(/\W/g,'');
+      const visible = !f.showWhen;
+      const wrapper = $(`<div class="form-group" id="wrap_${id}" style="${visible?'':'display:none'}">`);
+      wrapper.append(`<label>${f.title}${f.required?' *':''}</label>`);
+      let input;
+      switch(f.type){
+        case 'text': input = $(`<input class="form-control" id="${id}" ${f.required?'required':''}>`); break;
+        case 'multiline': input = $(`<textarea class="form-control" id="${id}" ${f.required?'required':''}></textarea>`); break;
+        case 'choice':
+          input = $(`<select class="form-control" id="${id}" ${f.required?'required':''}>`);
+          f.choices.forEach(c => input.append(`<option>${c}</option>`));
+          break;
+        case 'date': input = $(`<input type="date" class="form-control" id="${id}" ${f.required?'required':''}>`); break;
+        case 'people': input = $(`<input type="text" class="form-control" id="${id}" placeholder="Enter user email/name" ${f.required?'required':''}>`); break;
+        case 'lookup': input = $(`<input type="text" class="form-control" id="${id}" placeholder="Lookup existing item" ${f.required?'required':''}>`); break;
+        case 'file': input = $(`<input type="file" class="form-control" id="${id}" ${f.required?'required':''}>`); break;
+      }
+      wrapper.append(input);
+      $f.append(wrapper);
+
+      // watch for conditional logic
+      if (f.showWhen) {
+        $(`#wrap_fld_${f.showWhen.field.replace(/\W/g,'')}`).on('change', e => {
+          const v = e.target.value;
+          wrapper.toggle(v === f.showWhen.value);
+        });
+      }
+    });
+    $f.append('<button class="btn btn-primary">Submit</button>');
+    $('#form-container').append($f);
+
+    // Submit handler: validating & REST call
+    $f.on('submit', function(e) {
+      e.preventDefault();
+      const item = {};
+      const files = [];
+      config.fields.forEach(f => {
+        const id = 'fld_' + f.title.replace(/\W/g,'');
+        if (f.type === 'file') files.push({ fileInput: document.getElementById(id), field: f });
+        else item[f.title] = $('#' + id).val();
+      });
+      saveItem(item, files);
+    });
+  });
+
+  // REST Submit logic
+  function saveItem(item, files) {
+    const list = 'YourListName';
+    const ctx = _spPageContextInfo;
+    $.ajax({
+      url: `${ctx.webAbsoluteUrl}/_api/web/lists/getbytitle('${list}')/items`,
+      method: 'POST',
+      headers: {
+        'Accept':'application/json;odata=verbose',
+        'Content-Type':'application/json;odata=verbose',
+        'X-RequestDigest': $('#__REQUESTDIGEST').val()
+      },
+      data: JSON.stringify({ __metadata:{ 'type': `SP.Data.${list.charAt(0).toUpperCase()+list.slice(1)}ListItem` }, ...item }),
+      success: function(data) {
+        if (files.length) attachFiles(data.d.Id, files);
+        else alert('Submitted! ID='+data.d.Id);
+      },
+      error: function(err) { console.error(err); alert('Error: see console'); }
+    });
+  }
+
+  function attachFiles(itemId, files) {
+    const ctx = _spPageContextInfo;
+    const list = 'YourListName';
+    let i = 0;
+    function next() {
+      if (i >= files.length) { alert('Submitted with attachments!'); return; }
+      const f = files[i];
+      const fd = new FormData();
+      const file = f.fileInput.files[0];
+      fd.append("file", file);
+      $.ajax({
+        url: `${ctx.webAbsoluteUrl}/_api/web/lists/getbytitle('${list}')/items(${itemId})/AttachmentFiles/add(FileName='${file.name}')`,
+        method: 'POST',
+        processData: false,
+        contentType: false,
+        headers: {'X-RequestDigest': $('#__REQUESTDIGEST').val()},
+        data: fd,
+        success: () => { i++; next(); },
+        error: err => { console.error(err); i++; next(); }
+      });
+    }
+    next();
+  }
+
+})(jQuery);
+</script>
