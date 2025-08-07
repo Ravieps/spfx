@@ -1,32 +1,94 @@
-<style>
-  .tab-editor, .tab-pane { margin-top: 20px; }
-  .tab-editor .tab-list { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
-  .tab-editor .tab-item {
-    padding: 6px 12px; background: #f3f3f3; border: 1px solid #ccc; border-radius: 4px; cursor: pointer;
-    display: flex; align-items: center; gap: 4px;
-  }
-  .tab-editor .tab-item input { width: 100px; }
-  .tab-editor .active { font-weight: bold; border-color: #0078d4; background: #fff; }
-  .tab-pane { display: none; padding: 10px; border: 1px solid #ccc; }
-  .tab-pane.active { display: block; }
-  .edit-tabs-btn { margin-top: 15px; margin-bottom: 10px; }
-  .field-list { min-height: 60px; border: 1px dashed #ccc; padding: 8px; background: #fafafa; }
-  .field-item { margin: 4px 0; padding: 6px; background: #eee; border: 1px solid #aaa; cursor: move; }
-  .tab-config-modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
-    background: white; padding: 20px; z-index: 1000; border: 2px solid #0078d4; border-radius: 6px;
-    width: 700px; max-height: 80vh; overflow: auto;
-  }
-  .tab-config-modal h3 { margin-top: 0; }
-  .tab-config-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0,0,0,0.3); z-index: 999;
-  }
-  .tab-controls { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-</style>
-
-<!-- Load jQuery and jQuery UI only if not already present -->
+<!-- Load jQuery and jQuery UI -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
 <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/smoothness/jquery-ui.css">
+
+<style>
+  .tab-editor { margin-bottom: 20px; }
+  .tab-list { display: flex; margin-bottom: 10px; }
+  .tab-item {
+    padding: 8px 15px;
+    background: #ddd;
+    margin-right: 5px;
+    cursor: pointer;
+    border-radius: 3px;
+  }
+  .tab-item.active { font-weight: bold; background: #aaa; }
+  .tab-content .tab-pane { display: none; }
+  .tab-content .tab-pane.active { display: block; }
+
+  .edit-tabs-btn {
+    margin-bottom: 10px;
+    background: #0078d4;
+    color: #fff;
+    border: none;
+    padding: 7px 14px;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+
+  .tab-config-modal {
+    position: fixed;
+    top: 5%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #fff;
+    border: 1px solid #ccc;
+    padding: 20px;
+    z-index: 9999;
+    width: 600px;
+    max-height: 90vh;
+    overflow: auto;
+    box-shadow: 0 0 10px rgba(0,0,0,0.3);
+  }
+
+  .tab-config-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.4);
+    z-index: 9998;
+  }
+
+  .field-list {
+    min-height: 50px;
+    background: #f9f9f9;
+    padding: 10px;
+    border: 1px dashed #ccc;
+    margin-top: 5px;
+  }
+
+  .field-item {
+    padding: 5px 10px;
+    background: #eee;
+    border: 1px solid #ccc;
+    margin-bottom: 5px;
+    cursor: move;
+  }
+
+  .field-placeholder {
+    background: #cfc;
+    border: 1px dashed #080;
+    height: 2em;
+    margin-bottom: 5px;
+  }
+
+  .tab-settings {
+    margin-bottom: 5px;
+  }
+
+  .tab-settings input[type="text"] {
+    width: 120px;
+    margin-right: 5px;
+  }
+
+  .tab-settings input[type="color"] {
+    margin-right: 10px;
+  }
+</style>
+
 <script>
 (function($) {
   $(document).ready(function() {
@@ -91,7 +153,7 @@
     }
 
     function showTabEditor(existingLayout) {
-      $('.tab-config-modal, .tab-config-overlay').remove(); // cleanup if already open
+      $('.tab-config-modal, .tab-config-overlay').remove(); // cleanup
       const modal = $('<div class="tab-config-modal"></div>');
       const overlay = $('<div class="tab-config-overlay"></div>');
       const closeBtn = $('<button type="button">Close</button>');
@@ -117,7 +179,7 @@
           const tabBox = $(`
             <div style="border:1px solid #ccc; padding:10px; margin-bottom:10px;">
               <div class="tab-settings">
-                <input type="text" class="tab-name" value="${tab.name}" placeholder="Tab name" style="width:120px;">
+                <input type="text" class="tab-name" value="${tab.name}" placeholder="Tab name">
                 <input type="color" class="tab-color" value="${tab.color || '#f3f3f3'}">
                 <button type="button" class="delete-tab">Delete</button>
               </div>
@@ -140,14 +202,14 @@
 
         modal.append('<br/>').append(saveBtn).append(' ').append(closeBtn);
 
-        $('body').append(overlay).append(modal); // append before sortable
+        $('body').append(overlay).append(modal);
 
         setTimeout(() => {
           modal.find('.field-list').sortable({
             connectWith: '.field-list',
-            placeholder: 'field-placeholder',
+            placeholder: 'field-placeholder'
           }).disableSelection();
-        }, 0); // ensure it's bound after render
+        }, 0);
 
         addTabBtn.on('click', () => {
           tabs.push({ name: "New Tab", color: "#f3f3f3", fields: [] });
@@ -165,13 +227,11 @@
         saveBtn.off().on('click', () => {
           tabs.forEach((tab, i) => {
             const container = modal.find(`[data-tab-index="${i}"]`).closest('div');
-            const nameInput = container.find('.tab-name');
-            const colorInput = container.find('.tab-color');
-            tab.name = nameInput.val() || `Tab ${i+1}`;
-            tab.color = colorInput.val();
+            tab.name = container.find('.tab-name').val() || `Tab ${i+1}`;
+            tab.color = container.find('.tab-color').val();
 
             tab.fields = [];
-            modal.find(`[data-tab-index="${i}"] .field-item`).each(function() {
+            container.find('.field-list .field-item').each(function() {
               tab.fields.push($(this).data('name'));
             });
           });
