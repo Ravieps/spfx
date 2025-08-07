@@ -1,0 +1,207 @@
+<!-- jQuery and jQuery UI -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<link href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css" rel="stylesheet" />
+<script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
+
+<style>
+    .tab-editor-container { margin: 20px 0; border: 1px solid #ccc; padding: 10px; background: #f9f9f9; }
+    .tab-editor-header { margin-bottom: 10px; }
+    .tab-editor-tabs { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+    .tab-editor-tab {
+        border: 1px solid #0078d4;
+        padding: 5px 10px;
+        border-radius: 4px;
+        background: #fff;
+        cursor: pointer;
+        position: relative;
+    }
+    .tab-editor-tab.active {
+        background: #0078d4;
+        color: #fff;
+    }
+    .tab-delete {
+        position: absolute;
+        top: -5px;
+        right: -5px;
+        background: red;
+        color: #fff;
+        border-radius: 50%;
+        width: 16px;
+        height: 16px;
+        font-size: 10px;
+        text-align: center;
+        line-height: 16px;
+        cursor: pointer;
+    }
+    .tab-fields { min-height: 50px; border: 1px dashed #ccc; padding: 5px; background: #fff; margin-bottom: 10px; }
+    .tab-fields .field-item { background: #eef; padding: 5px; margin: 2px; border: 1px solid #ccc; cursor: move; }
+    .field-list { margin-top: 10px; }
+    .field-item.unassigned { background: #fdd; }
+    .custom-tabs { margin-top: 20px; }
+    .custom-tabs ul { list-style: none; display: flex; margin: 0; padding: 0; border-bottom: 2px solid #0078d4; }
+    .custom-tabs ul li {
+        margin-right: 5px; padding: 8px 16px;
+        background: #f3f3f3; cursor: pointer;
+        border: 1px solid #ccc; border-bottom: none;
+        border-radius: 4px 4px 0 0;
+    }
+    .custom-tabs ul li.active { background: #fff; font-weight: bold; }
+    .tab-pane { display: none; padding: 10px; border: 1px solid #ccc; border-top: none; }
+    .tab-pane.active { display: block; }
+</style>
+
+<script>
+(function($) {
+    $(document).ready(function() {
+        const form = $('table.ms-formtable');
+        if (form.length === 0) return;
+
+        // STEP 1: Extract fields from the SharePoint form
+        const allFields = {};
+        form.find('tr').each(function() {
+            const label = $(this).find('td.ms-formlabel').text().trim().replace(':', '');
+            if (label) allFields[label] = $(this);
+        });
+
+        // STEP 2: Load or init tab layout from localStorage
+        let tabLayout = JSON.parse(localStorage.getItem('spTabLayout') || '{}');
+        if ($.isEmptyObject(tabLayout)) {
+            tabLayout = { "Tab 1": Object.keys(allFields) };
+        }
+
+        // STEP 3: Create the Tab Editor UI
+        const editor = $(`
+            <div class="tab-editor-container">
+                <div class="tab-editor-header">
+                    <strong>🧩 Tab Layout Editor</strong>
+                    <button id="add-tab-btn">+ Add Tab</button>
+                    <button id="save-layout-btn">💾 Save & Apply</button>
+                </div>
+                <div class="tab-editor-tabs"></div>
+                <div id="tab-fields-container"></div>
+                <div class="field-list unassigned-fields"><strong>Unassigned Fields</strong></div>
+            </div>
+        `);
+
+        form.before(editor);
+
+        // Functions to render tabs and fields
+        function renderEditor() {
+            const tabList = editor.find('.tab-editor-tabs').empty();
+            const tabFieldsContainer = $('#tab-fields-container').empty();
+            const unassigned = [];
+
+            Object.keys(tabLayout).forEach((tabName, index) => {
+                const tabId = `tab-${index}`;
+                const tabBtn = $(`
+                    <div class="tab-editor-tab" data-tab="${tabId}" contenteditable="true">
+                        ${tabName}
+                        <span class="tab-delete" title="Delete tab">×</span>
+                    </div>
+                `);
+                tabList.append(tabBtn);
+
+                const fieldBox = $(`<div class="tab-fields connected-sortable" data-tab="${tabId}"></div>`);
+                (tabLayout[tabName] || []).forEach(fieldName => {
+                    if (allFields[fieldName]) {
+                        fieldBox.append(`<div class="field-item" data-name="${fieldName}">${fieldName}</div>`);
+                    }
+                });
+                tabFieldsContainer.append(fieldBox);
+
+                tabBtn.on('click', function() {
+                    $('.tab-editor-tab').removeClass('active');
+                    $(this).addClass('active');
+                    $('.tab-fields').hide();
+                    $(`.tab-fields[data-tab="${tabId}"]`).show();
+                });
+
+                tabBtn.find('.tab-delete').on('click', function(e) {
+                    e.stopPropagation();
+                    delete tabLayout[tabName];
+                    renderEditor();
+                });
+
+                if (index === 0) {
+                    tabBtn.click();
+                }
+            });
+
+            // Add unassigned fields
+            const assigned = Object.values(tabLayout).flat();
+            const unassignedFields = Object.keys(allFields).filter(f => !assigned.includes(f));
+            const unassignedBox = editor.find('.unassigned-fields').empty().append('<strong>Unassigned Fields</strong>');
+            const sortable = $('<div class="connected-sortable tab-fields"></div>');
+            unassignedFields.forEach(fieldName => {
+                sortable.append(`<div class="field-item unassigned" data-name="${fieldName}">${fieldName}</div>`);
+            });
+            unassignedBox.append(sortable);
+
+            $('.connected-sortable').sortable({
+                connectWith: '.connected-sortable',
+                placeholder: 'field-item-placeholder'
+            }).disableSelection();
+        }
+
+        // Add new tab
+        $('#add-tab-btn').on('click', function() {
+            const newName = "New Tab " + (Object.keys(tabLayout).length + 1);
+            tabLayout[newName] = [];
+            renderEditor();
+        });
+
+        // Save layout and render actual tabs
+        $('#save-layout-btn').on('click', function() {
+            // Update tabLayout from UI
+            tabLayout = {};
+            $('.tab-editor-tab').each(function(i) {
+                const tabName = $(this).text().trim();
+                const tabId = $(this).attr('data-tab');
+                const fields = $(`.tab-fields[data-tab="${tabId}"] .field-item`).map(function() {
+                    return $(this).attr('data-name');
+                }).get();
+                tabLayout[tabName] = fields;
+            });
+
+            localStorage.setItem('spTabLayout', JSON.stringify(tabLayout));
+            renderTabs();
+        });
+
+        function renderTabs() {
+            form.hide(); // Hide original form
+
+            const tabWrapper = $('<div class="custom-tabs"></div>');
+            const tabList = $('<ul></ul>');
+            const tabContentWrapper = $('<div></div>');
+            let tabIndex = 0;
+
+            for (const [tabName, fieldNames] of Object.entries(tabLayout)) {
+                const tabId = `custom-tab-${tabIndex++}`;
+                tabList.append(`<li data-tab="${tabId}">${tabName}</li>`);
+
+                const tabPane = $(`<div class="tab-pane" id="${tabId}"></div>`);
+                fieldNames.forEach(field => {
+                    if (allFields[field]) {
+                        tabPane.append(allFields[field]);
+                    }
+                });
+                tabContentWrapper.append(tabPane);
+            }
+
+            $('table.ms-formtable').before(tabWrapper.append(tabList).append(tabContentWrapper));
+
+            tabList.find('li').on('click', function() {
+                const target = $(this).attr('data-tab');
+                tabList.find('li').removeClass('active');
+                $(this).addClass('active');
+                $('.tab-pane').removeClass('active');
+                $(`#${target}`).addClass('active');
+            });
+
+            tabList.find('li:first').click();
+        }
+
+        renderEditor(); // Initial render
+    });
+})(jQuery);
+</script>
