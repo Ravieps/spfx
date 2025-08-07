@@ -23,14 +23,14 @@
   .tab-controls { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
 </style>
 
+<!-- Load jQuery and jQuery UI only if not already present -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
 <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/smoothness/jquery-ui.css">
-
 <script>
 (function($) {
   $(document).ready(function() {
-    const formType = getFormType(); // New, Edit, Display
+    const formType = getFormType();
     const listTitle = _spPageContextInfo.listTitle;
     const layoutKey = `tabLayout-${_spPageContextInfo.webAbsoluteUrl}-${listTitle}-${formType}`;
 
@@ -53,7 +53,6 @@
     let layout = savedLayout ? JSON.parse(savedLayout) : null;
     if (layout) renderTabs(layout);
 
-    // Add Edit Tabs button
     const editBtn = $('<button type="button" class="edit-tabs-btn">Edit Tabs</button>');
     formTable.before(editBtn);
 
@@ -80,7 +79,6 @@
 
       formTable.before(wrapper.append(tabList).append(tabContent));
 
-      // Tab switching
       tabList.on('click', '.tab-item', function() {
         const tabId = $(this).data('tab');
         $('.tab-item').removeClass('active');
@@ -93,6 +91,7 @@
     }
 
     function showTabEditor(existingLayout) {
+      $('.tab-config-modal, .tab-config-overlay').remove(); // cleanup if already open
       const modal = $('<div class="tab-config-modal"></div>');
       const overlay = $('<div class="tab-config-overlay"></div>');
       const closeBtn = $('<button type="button">Close</button>');
@@ -111,16 +110,17 @@
         const tabControls = $('<div class="tab-controls"></div>');
         const addTabBtn = $('<button type="button">+ Add Tab</button>');
         tabControls.append(addTabBtn);
-
         modal.append(tabControls);
 
         const tabsArea = $('<div class="tab-editor-area"></div>');
         tabs.forEach((tab, i) => {
           const tabBox = $(`
             <div style="border:1px solid #ccc; padding:10px; margin-bottom:10px;">
-              <input type="text" value="${tab.name}" placeholder="Tab name" style="width:120px;">
-              <input type="color" value="${tab.color || '#f3f3f3'}">
-              <button type="button" class="delete-tab">Delete</button>
+              <div class="tab-settings">
+                <input type="text" class="tab-name" value="${tab.name}" placeholder="Tab name" style="width:120px;">
+                <input type="color" class="tab-color" value="${tab.color || '#f3f3f3'}">
+                <button type="button" class="delete-tab">Delete</button>
+              </div>
               <div class="field-list" data-tab-index="${i}"></div>
             </div>
           `);
@@ -140,11 +140,14 @@
 
         modal.append('<br/>').append(saveBtn).append(' ').append(closeBtn);
 
-        // Drag/drop
-        modal.find('.field-list').sortable({
-          connectWith: '.field-list',
-          placeholder: 'field-placeholder',
-        }).disableSelection();
+        $('body').append(overlay).append(modal); // append before sortable
+
+        setTimeout(() => {
+          modal.find('.field-list').sortable({
+            connectWith: '.field-list',
+            placeholder: 'field-placeholder',
+          }).disableSelection();
+        }, 0); // ensure it's bound after render
 
         addTabBtn.on('click', () => {
           tabs.push({ name: "New Tab", color: "#f3f3f3", fields: [] });
@@ -161,13 +164,16 @@
 
         saveBtn.off().on('click', () => {
           tabs.forEach((tab, i) => {
-            const box = modal.find(`[data-tab-index="${i}"]`);
+            const container = modal.find(`[data-tab-index="${i}"]`).closest('div');
+            const nameInput = container.find('.tab-name');
+            const colorInput = container.find('.tab-color');
+            tab.name = nameInput.val() || `Tab ${i+1}`;
+            tab.color = colorInput.val();
+
             tab.fields = [];
-            box.find('.field-item').each(function() {
+            modal.find(`[data-tab-index="${i}"] .field-item`).each(function() {
               tab.fields.push($(this).data('name'));
             });
-            tab.name = box.closest('div').find('input[type="text"]').val();
-            tab.color = box.closest('div').find('input[type="color"]').val();
           });
 
           const newUnassigned = [];
@@ -186,16 +192,14 @@
           localStorage.setItem(layoutKey, JSON.stringify(tabs));
           location.reload();
         });
+
+        closeBtn.on('click', () => {
+          modal.remove();
+          overlay.remove();
+        });
       };
 
       renderEditor();
-
-      $('body').append(overlay).append(modal);
-
-      closeBtn.on('click', () => {
-        modal.remove();
-        overlay.remove();
-      });
     }
 
     function getFormType() {
