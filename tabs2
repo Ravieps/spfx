@@ -1,0 +1,81 @@
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<style>
+    .custom-tabs ul { list-style: none; padding: 0; display: flex; border-bottom: 2px solid #0078d4; margin-bottom: 0; }
+    .custom-tabs ul li {
+        margin-right: 5px; padding: 8px 16px; background: #f3f3f3; cursor: pointer;
+        border: 1px solid #ccc; border-bottom: none; border-radius: 4px 4px 0 0;
+    }
+    .custom-tabs ul li.active { background: #fff; font-weight: bold; }
+    .tab-pane { display: none; padding: 10px; border: 1px solid #ccc; border-top: none; }
+    .tab-pane.active { display: block; }
+</style>
+
+<script>
+(function($) {
+    const formType = (function() {
+        const url = window.location.href.toLowerCase();
+        if (url.includes("newform.aspx")) return "New";
+        if (url.includes("editform.aspx")) return "Edit";
+        if (url.includes("dispform.aspx")) return "Display";
+        return "";
+    })();
+
+    const listTitle = _spPageContextInfo.listTitle;
+    const configListName = "FormTabLayouts";
+
+    function loadTabLayout(callback) {
+        $.ajax({
+            url: `${_spPageContextInfo.webAbsoluteUrl}/_api/web/lists/getbytitle('${configListName}')/items?$filter=ListName eq '${listTitle}' and (FormType eq '${formType}' or FormType eq 'All')`,
+            method: "GET",
+            headers: { "Accept": "application/json;odata=verbose" },
+            success: function(data) {
+                if (data.d.results.length > 0) {
+                    const layout = JSON.parse(data.d.results[0].LayoutJson);
+                    callback(layout);
+                }
+            }
+        });
+    }
+
+    function applyTabLayout(layout) {
+        const formTable = $('table.ms-formtable');
+        const fields = {};
+        formTable.find('tr').each(function() {
+            const label = $(this).find('td.ms-formlabel').text().trim().replace(':', '');
+            if (label) fields[label] = $(this);
+        });
+
+        const wrapper = $('<div class="custom-tabs"></div>');
+        const tabList = $('<ul></ul>');
+        const content = $('<div></div>');
+        let index = 0;
+
+        for (const [tabName, fieldNames] of Object.entries(layout)) {
+            const tabId = `tab-${index}`;
+            tabList.append(`<li data-tab="${tabId}">${tabName}</li>`);
+
+            const pane = $(`<div class="tab-pane" id="${tabId}"></div>`);
+            fieldNames.forEach(fn => {
+                if (fields[fn]) pane.append(fields[fn]);
+            });
+            content.append(pane);
+            index++;
+        }
+
+        formTable.before(wrapper.append(tabList).append(content));
+        formTable.hide();
+
+        tabList.find('li').on('click', function() {
+            const id = $(this).attr('data-tab');
+            tabList.find('li').removeClass('active');
+            $(this).addClass('active');
+            $('.tab-pane').removeClass('active');
+            $('#' + id).addClass('active');
+        });
+
+        tabList.find('li:first').click();
+    }
+
+    loadTabLayout(applyTabLayout);
+})(jQuery);
+</script>
