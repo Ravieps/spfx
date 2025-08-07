@@ -1,65 +1,78 @@
 <!-- Load jQuery and jQuery UI -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
-<link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/smoothness/jquery-ui.css">
+<link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
 
 <style>
-  .tab-editor { margin-bottom: 20px; }
-  .tab-list { display: flex; margin-bottom: 10px; }
-  .tab-item {
-    padding: 8px 15px;
-    background: #ddd;
-    margin-right: 5px;
-    cursor: pointer;
-    border-radius: 3px;
-  }
-  .tab-item.active { font-weight: bold; background: #aaa; }
-  .tab-content .tab-pane { display: none; }
-  .tab-content .tab-pane.active { display: block; }
-
+  .tab-btn-container { margin-bottom: 15px; }
   .edit-tabs-btn {
-    margin-bottom: 10px;
+    padding: 6px 12px;
     background: #0078d4;
-    color: #fff;
+    color: white;
     border: none;
-    padding: 7px 14px;
     border-radius: 3px;
     cursor: pointer;
   }
+  .tab-header {
+    display: flex;
+    margin-bottom: 10px;
+    gap: 6px;
+  }
+  .tab-header div {
+    padding: 8px 15px;
+    border-radius: 3px;
+    background-color: #e0e0e0;
+    cursor: pointer;
+  }
+  .tab-header .active {
+    background-color: #0078d4;
+    color: white;
+  }
+  .tab-content > div {
+    display: none;
+    margin-bottom: 20px;
+  }
+  .tab-content > div.active {
+    display: block;
+  }
 
-  .tab-config-modal {
+  .tab-editor-modal, .tab-overlay {
     position: fixed;
-    top: 5%;
-    left: 50%;
-    transform: translateX(-50%);
-    background: #fff;
-    border: 1px solid #ccc;
-    padding: 20px;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
     z-index: 9999;
-    width: 600px;
+  }
+  .tab-overlay {
+    background: rgba(0,0,0,0.5);
+  }
+  .tab-editor-modal {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    pointer-events: none;
+  }
+  .tab-editor-content {
+    width: 700px;
     max-height: 90vh;
-    overflow: auto;
-    box-shadow: 0 0 10px rgba(0,0,0,0.3);
+    background: white;
+    padding: 20px;
+    border-radius: 6px;
+    overflow-y: auto;
+    pointer-events: auto;
+    position: relative;
   }
-
-  .tab-config-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.4);
-    z-index: 9998;
+  .tab-config {
+    margin-bottom: 20px;
+    border: 1px solid #ccc;
+    padding: 10px;
   }
-
   .field-list {
     min-height: 50px;
-    background: #f9f9f9;
-    padding: 10px;
     border: 1px dashed #ccc;
+    background: #fafafa;
+    padding: 10px;
     margin-top: 5px;
   }
-
   .field-item {
     padding: 5px 10px;
     background: #eee;
@@ -67,25 +80,8 @@
     margin-bottom: 5px;
     cursor: move;
   }
-
-  .field-placeholder {
-    background: #cfc;
-    border: 1px dashed #080;
-    height: 2em;
-    margin-bottom: 5px;
-  }
-
-  .tab-settings {
-    margin-bottom: 5px;
-  }
-
-  .tab-settings input[type="text"] {
-    width: 120px;
-    margin-right: 5px;
-  }
-
-  .tab-settings input[type="color"] {
-    margin-right: 10px;
+  .tab-actions {
+    margin-top: 10px;
   }
 </style>
 
@@ -94,172 +90,157 @@
   $(document).ready(function() {
     const formType = getFormType();
     const listTitle = _spPageContextInfo.listTitle;
-    const layoutKey = `tabLayout-${_spPageContextInfo.webAbsoluteUrl}-${listTitle}-${formType}`;
-
-    const fieldRows = {};
+    const layoutKey = `TabLayout_${listTitle}_${formType}`;
     const formTable = $('table.ms-formtable');
+
     if (!formTable.length) return;
 
+    const fieldMap = {};
     formTable.find('tr').each(function() {
-      const labelCell = $(this).find('td.ms-formlabel');
-      const fieldCell = $(this).find('td.ms-formbody');
-      if (labelCell.length && fieldCell.length) {
-        const fieldName = labelCell.text().trim().replace(':', '');
-        if (fieldName) {
-          fieldRows[fieldName] = $(this);
-        }
-      }
+      const label = $(this).find('td.ms-formlabel').text().trim().replace(':','');
+      const body = $(this).find('td.ms-formbody');
+      if (label && body.length) fieldMap[label] = $(this);
     });
 
-    const savedLayout = localStorage.getItem(layoutKey);
-    let layout = savedLayout ? JSON.parse(savedLayout) : null;
+    const allFields = Object.keys(fieldMap);
+    let layout = JSON.parse(localStorage.getItem(layoutKey) || 'null');
+
     if (layout) renderTabs(layout);
 
-    const editBtn = $('<button type="button" class="edit-tabs-btn">Edit Tabs</button>');
-    formTable.before(editBtn);
-
-    editBtn.on('click', function() {
-      showTabEditor(layout);
-    });
+    $('<div class="tab-btn-container"><button type="button" class="edit-tabs-btn">Edit Tabs</button></div>').insertBefore(formTable);
+    $('.edit-tabs-btn').on('click', () => showEditor(layout));
 
     function renderTabs(layout) {
-      const wrapper = $('<div class="tab-editor"></div>');
-      const tabList = $('<div class="tab-list"></div>');
+      const wrapper = $('<div></div>');
+      const tabHeader = $('<div class="tab-header"></div>');
       const tabContent = $('<div class="tab-content"></div>');
 
       layout.forEach((tab, i) => {
         const tabId = `tab-${i}`;
-        const tabBtn = $(`<div class="tab-item" style="background-color:${tab.color}" data-tab="${tabId}">${tab.name}</div>`);
-        tabList.append(tabBtn);
+        const tabBtn = $(`<div style="background-color:${tab.color}" data-tab="${tabId}">${tab.name}</div>`);
+        const tabPane = $(`<div id="${tabId}"></div>`);
 
-        const tabPane = $(`<div class="tab-pane" id="${tabId}"></div>`);
-        tab.fields.forEach(f => {
-          if (fieldRows[f]) tabPane.append(fieldRows[f]);
+        tab.fields.forEach(field => {
+          if (fieldMap[field]) tabPane.append(fieldMap[field]);
         });
+
+        tabHeader.append(tabBtn);
         tabContent.append(tabPane);
       });
 
-      formTable.before(wrapper.append(tabList).append(tabContent));
+      wrapper.append(tabHeader).append(tabContent);
+      formTable.before(wrapper);
 
-      tabList.on('click', '.tab-item', function() {
+      tabHeader.on('click', 'div', function() {
         const tabId = $(this).data('tab');
-        $('.tab-item').removeClass('active');
+        tabHeader.find('div').removeClass('active');
         $(this).addClass('active');
-        $('.tab-pane').removeClass('active');
+        tabContent.find('> div').removeClass('active');
         $('#' + tabId).addClass('active');
       });
 
-      $('.tab-item:first', tabList).click();
+      tabHeader.find('div:first').click();
     }
 
-    function showTabEditor(existingLayout) {
-      $('.tab-config-modal, .tab-config-overlay').remove(); // cleanup
-      const modal = $('<div class="tab-config-modal"></div>');
-      const overlay = $('<div class="tab-config-overlay"></div>');
-      const closeBtn = $('<button type="button">Close</button>');
-      const saveBtn = $('<button type="button">Save</button>');
+    function showEditor(currentLayout) {
+      $('.tab-overlay, .tab-editor-modal').remove();
 
-      const tabs = existingLayout ? JSON.parse(JSON.stringify(existingLayout)) : [];
+      const overlay = $('<div class="tab-overlay"></div>');
+      const modal = $('<div class="tab-editor-modal"><div class="tab-editor-content"></div></div>');
+      const content = modal.find('.tab-editor-content');
 
-      const unassigned = Object.keys(fieldRows).filter(f => {
-        return !tabs.some(tab => tab.fields.includes(f));
-      });
+      let tabs = currentLayout ? JSON.parse(JSON.stringify(currentLayout)) : [];
+      let usedFields = tabs.flatMap(t => t.fields);
+      let unassigned = allFields.filter(f => !usedFields.includes(f));
 
-      const renderEditor = () => {
-        modal.empty();
-        modal.append('<h3>Edit Tabs</h3>');
+      function renderUI() {
+        content.empty().append('<h3>Customize Tabs</h3>');
 
-        const tabControls = $('<div class="tab-controls"></div>');
-        const addTabBtn = $('<button type="button">+ Add Tab</button>');
-        tabControls.append(addTabBtn);
-        modal.append(tabControls);
-
-        const tabsArea = $('<div class="tab-editor-area"></div>');
-        tabs.forEach((tab, i) => {
-          const tabBox = $(`
-            <div style="border:1px solid #ccc; padding:10px; margin-bottom:10px;">
-              <div class="tab-settings">
-                <input type="text" class="tab-name" value="${tab.name}" placeholder="Tab name">
-                <input type="color" class="tab-color" value="${tab.color || '#f3f3f3'}">
-                <button type="button" class="delete-tab">Delete</button>
-              </div>
-              <div class="field-list" data-tab-index="${i}"></div>
+        tabs.forEach((tab, idx) => {
+          const box = $(`
+            <div class="tab-config">
+              <input type="text" class="tab-name" value="${tab.name}" placeholder="Tab name">
+              <input type="color" class="tab-color" value="${tab.color || '#f3f3f3'}">
+              <button type="button" class="remove-tab">Delete</button>
+              <div class="field-list" data-tab-index="${idx}"></div>
             </div>
           `);
           tab.fields.forEach(f => {
-            tabBox.find('.field-list').append(`<div class="field-item" data-name="${f}">${f}</div>`);
+            box.find('.field-list').append(`<div class="field-item" data-name="${f}">${f}</div>`);
           });
-          tabsArea.append(tabBox);
+          content.append(box);
         });
 
-        modal.append(tabsArea);
-
-        const unassignedBox = $('<div><strong>Unassigned Fields</strong><div class="field-list" data-tab-index="-1"></div></div>');
+        const unassignedBox = $(`
+          <div>
+            <strong>Unassigned Fields</strong>
+            <div class="field-list" data-tab-index="-1"></div>
+          </div>
+        `);
         unassigned.forEach(f => {
           unassignedBox.find('.field-list').append(`<div class="field-item" data-name="${f}">${f}</div>`);
         });
-        modal.append(unassignedBox);
+        content.append(unassignedBox);
 
-        modal.append('<br/>').append(saveBtn).append(' ').append(closeBtn);
-
-        $('body').append(overlay).append(modal);
+        content.append(`
+          <div class="tab-actions">
+            <button type="button" class="add-tab">+ Add Tab</button>
+            <button type="button" class="save-tabs">Save</button>
+            <button type="button" class="close-tabs">Close</button>
+          </div>
+        `);
 
         setTimeout(() => {
-          modal.find('.field-list').sortable({
+          $('.field-list').sortable({
             connectWith: '.field-list',
             placeholder: 'field-placeholder'
           }).disableSelection();
         }, 0);
+      }
 
-        addTabBtn.on('click', () => {
-          tabs.push({ name: "New Tab", color: "#f3f3f3", fields: [] });
-          renderEditor();
-        });
+      content.on('click', '.add-tab', () => {
+        tabs.push({ name: 'New Tab', color: '#f3f3f3', fields: [] });
+        renderUI();
+      });
 
-        modal.find('.delete-tab').on('click', function() {
-          const idx = $(this).closest('div').find('.field-list').data('tab-index');
-          const fieldsToReturn = tabs[idx].fields;
-          unassigned.push(...fieldsToReturn);
-          tabs.splice(idx, 1);
-          renderEditor();
-        });
+      content.on('click', '.remove-tab', function() {
+        const idx = $(this).closest('.tab-config').find('.field-list').data('tab-index');
+        const removedFields = tabs[idx].fields;
+        unassigned = unassigned.concat(removedFields);
+        tabs.splice(idx, 1);
+        renderUI();
+      });
 
-        saveBtn.off().on('click', () => {
-          tabs.forEach((tab, i) => {
-            const container = modal.find(`[data-tab-index="${i}"]`).closest('div');
-            tab.name = container.find('.tab-name').val() || `Tab ${i+1}`;
-            tab.color = container.find('.tab-color').val();
-
-            tab.fields = [];
-            container.find('.field-list .field-item').each(function() {
-              tab.fields.push($(this).data('name'));
-            });
+      content.on('click', '.save-tabs', () => {
+        tabs.forEach((tab, i) => {
+          const cfg = content.find(`.field-list[data-tab-index="${i}"]`).closest('.tab-config');
+          tab.name = cfg.find('.tab-name').val().trim() || `Tab ${i+1}`;
+          tab.color = cfg.find('.tab-color').val();
+          tab.fields = [];
+          cfg.find('.field-list .field-item').each(function() {
+            tab.fields.push($(this).data('name'));
           });
-
-          const newUnassigned = [];
-          modal.find('[data-tab-index="-1"] .field-item').each(function() {
-            newUnassigned.push($(this).data('name'));
-          });
-
-          if (newUnassigned.length > 0) {
-            tabs.push({
-              name: "Other",
-              color: "#f3f3f3",
-              fields: newUnassigned
-            });
-          }
-
-          localStorage.setItem(layoutKey, JSON.stringify(tabs));
-          location.reload();
         });
 
-        closeBtn.on('click', () => {
-          modal.remove();
-          overlay.remove();
+        const newUnassigned = [];
+        content.find(`.field-list[data-tab-index="-1"] .field-item`).each(function() {
+          newUnassigned.push($(this).data('name'));
         });
-      };
+        if (newUnassigned.length) {
+          tabs.push({ name: "Other", color: "#f3f3f3", fields: newUnassigned });
+        }
 
-      renderEditor();
+        localStorage.setItem(layoutKey, JSON.stringify(tabs));
+        location.reload();
+      });
+
+      content.on('click', '.close-tabs', () => {
+        modal.remove();
+        overlay.remove();
+      });
+
+      $('body').append(overlay).append(modal);
+      renderUI();
     }
 
     function getFormType() {
