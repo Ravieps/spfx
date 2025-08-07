@@ -24,18 +24,29 @@
     const configListName = "FormTabLayouts";
 
     function loadTabLayout(callback) {
-        $.ajax({
-            url: `${_spPageContextInfo.webAbsoluteUrl}/_api/web/lists/getbytitle('${configListName}')/items?$filter=ListName eq '${listTitle}' and (FormType eq '${formType}' or FormType eq 'All')`,
-            method: "GET",
-            headers: { "Accept": "application/json;odata=verbose" },
-            success: function(data) {
-                if (data.d.results.length > 0) {
-                    const layout = JSON.parse(data.d.results[0].LayoutJson);
+    $.ajax({
+        url: `${_spPageContextInfo.webAbsoluteUrl}/_api/web/lists/getbytitle('${configListName}')/items?$filter=ListName eq '${listTitle}' and (FormType eq '${formType}' or FormType eq 'All')`,
+        method: "GET",
+        headers: { "Accept": "application/json;odata=verbose" },
+        success: function(data) {
+            if (data.d.results.length > 0) {
+                let layout = null;
+                try {
+                    layout = JSON.parse(data.d.results[0].LayoutJson);
                     callback(layout);
+                } catch (err) {
+                    console.error("Invalid JSON in LayoutJson column:", err, data.d.results[0].LayoutJson);
+                    alert("Invalid JSON stored in tab layout. Please check the configuration in FormTabLayouts.");
                 }
+            } else {
+                console.warn("No tab layout found for list:", listTitle);
             }
-        });
-    }
+        },
+        error: function(xhr, status, error) {
+            console.error("Failed to fetch layout from config list", error, xhr.responseText);
+        }
+    });
+}
 
     function applyTabLayout(layout) {
         const formTable = $('table.ms-formtable');
